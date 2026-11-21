@@ -109,3 +109,25 @@ PDF okuma baski kalitesine ve belgenin yerlesimine bagli olarak hata yapabilir.
 7. Galeriden JPEG/PNG/WEBP ve PDF ile eski belge seçimi akışının çalıştığını da doğrula.
 
 Not: v0.8.0 geçici fotoğraf dosyalarını arşive kaydetmez, yalnızca OCR taslağı hazırlar. Fotoğrafın aslı gerekiyorsa cihazda ayrıca güvenli biçimde saklayın. Test APK'ları farklı imzalarla derlenebildiğinden, mevcut test sürümünün üzerine kurulum garanti değildir; önce şifreli yedek alın.
+
+## Surum 0.9.0 - urun kalemleri ve irsaliye aktarimi
+
+- Uygulama ici kamera, galeri veya PDF'den cevrimdisi OCR ile belge okuma
+- Belge turleri: market/perakende fisi, e-Fatura/e-Arsiv, irsaliye, POS slipi, diger
+- OCR satir koordinatlarindan tablo satirlarini yeniden siralama; fotograf donuk olsa bile Android ML Kit'in duzelttigi okuma koordinatlarini kullanma
+- Urun kodu, urun adi, miktar, birim, birim fiyati, satir tutari ve satirdaki KDV orani
+- Fis/fatura numarasi, tarih/saat, firma, vergi numarasi, odeme turu, matrah/KDV/toplam
+- Ayni urun fis uzerinde birden fazla kez yaziliysa miktarlari birlestirme (orn. uc ekmek)
+- Fotografun icindeki POS slipini ikinci gider/odeme haline getirmeme
+- Son kullanicinin belirttigi 10 kalem yapim malzemeli belgeyi IRSALIYE olarak siniflandirma
+- Irsaliye fatura degildir: belge ve urunler kaydedilir; KDV/gider/defter kaydi otomatik olusturulmaz
+- Irsaliyeyi daha sonra secilen faturaya baglama (muhasebe fisini tekrar olusturmaz)
+- Kullanici oncesinde belgelerin ve tum satirlarin manuel kontrolu/duzeltmesi, sonrasinda arşivde kayit
+- Belge ayni OCR metniyle tekrar okutulursa mukerrer arsiv kaydina izin verilmez
+- Fatura belgelerinin kontrol edildikten sonra fatura taslagina aktarilmasi; urun kalemlerinin faturada da saklanmasi
+- Belgeler tum firmalar arasinda ayridir ve sifreli yerel veri tabaninda saklanir
+- Kamera goruntuleri ve OCR ham metni internete gonderilmez; sadece yerel sifreli kayda aktarilir
+- Uygulama tarafinda banka/POS/GIB/SGK servislerine dogrudan gonderim yoktur
+
+Sinirlar:
+OCR yanilabilir. Cok sutunlu/egik/elle yazili belgeler, iptal/iskonto/kampanya satirlari ve farkli KDV oranlari elle kontrol edilmelidir. Irsaliye islemindeki el yazisi notlar vergisel veya odeme belgesi sayilmaz. Resmi e-Fatura onayi ve KDV indirim hakki icin meslek mensubu ve ilgili GIB sistemleri gerekir. Bu surumde taranan belge fotografinin kendisi arşivlenmez; onaylanan bilgi ve OCR metni saklanir. Normal gelire/gidere veya resmi beyannamelere otomatik gonderim yoktur. Fis gideri ve e-fatura taslagi kullanici acik onayiyla olusturulur.

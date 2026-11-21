@@ -83,4 +83,17 @@ assert.ok(page.includes("if(readOnlyRecovery)"), "recovery read-only safeguard m
 assert.ok(page.includes("saveRestoredData"), "encrypted backup restore write missing");
 assert.ok(page.includes("saveCsvExport"), "native CSV writer missing");
 
-console.log("PASS: finance rules + embedded camera UI + data recovery and CSV checks");
+assert.ok(page.includes('document_parser.js'), 'document parser script is missing');
+assert.ok(page.includes('id="documents"'), 'document archive is missing');
+assert.ok(page.includes('saveScannedDocument'), 'OCR review save button is missing');
+assert.ok(page.includes('renderOcrItems'), 'OCR item editing UI is missing');
+assert.ok(page.includes('linkDeliveryToInvoice'), 'delivery-note link is missing');
+assert.ok(page.includes('postReceiptExpense'), 'receipt posting confirmation is missing');
+assert.ok(page.includes('linkedTransactionId'), 'receipt posting dedup is missing');
+assert.ok(page.includes('renderDocuments();'), 'document list is not part of render');
+assert.ok(page.includes('function showInvoiceItems'), 'invoice item details are missing');
+assert.equal(expr("Array.isArray(normalizeDB({}).documents)"),true);
+expr("db.documents.push({id:555001,companyId:db.activeCompanyId,documentType:'delivery_note',items:[],total:144035})");
+assert.equal(expr("scoped('documents').length"),1);
+assert.ok(!page.includes('NativeStore.uploadReceipt') && !page.includes('remoteOcr'));
+console.log('PASS: finance rules, embedded camera, local documents, delivery notes, receipts and recovery');

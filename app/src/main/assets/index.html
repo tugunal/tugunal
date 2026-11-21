@@ -35,7 +35,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 </head>
 <body>
 <div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
-<header><div class="toprow"><small>AKILLI MUHASEBE • v0.8.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
+<header><div class="toprow"><small>AKILLI MUHASEBE • v0.9.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
 <main class="container">
 <section id="dashboard" class="view active">
 <div class="cards">
@@ -45,7 +45,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
 </div>
 <div class="panel update-card" style="margin-top:12px">
-  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v0.8.0</span></div>
+  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v0.9.0</span></div>
   <p class="muted" id="updateStatus">Yeni sürüm kontrolü yapılmadı.</p>
   <div class="toolbar">
     <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
@@ -74,7 +74,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <section id="transactions" class="view"><div class="section"><h2>Gelir ve giderler</h2><button onclick="openForm('transaction')">+ Yeni kayıt</button></div><div class="panel" id="transactionList"></div></section>
 <section id="customers" class="view"><div class="section"><h2>Cari hesaplar</h2><button onclick="openForm('customer')">+ Cari ekle</button></div><div class="panel" id="customerList"></div></section>
 <section id="invoices" class="view">
-<div class="section"><h2>Fatura kayıtları</h2><button onclick="openForm('invoice')">+ Manuel fatura</button></div>
+<div class="section"><h2>Fatura ve belge okuma</h2><button onclick="showView('documents')">Belge arşivi</button></div><div class="section"><h2>Faturalar</h2><button onclick="openForm('invoice')">+ Manuel fatura</button></div>
 <div class="panel" style="margin-bottom:12px">
   <b>📷 Faturayı veya fişi fotoğraftan oku</b>
   <p class="muted">Kamerayı uygulamanın içinde aç, belgeyi çek, fotoğrafı kontrol et ve onayla. Yazılar cihazında okunur.</p>
@@ -88,12 +88,27 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   <p class="muted">Fotoğraf, okumadan sonra geçici kameradan silinir. Muhasebe kayıtlarına yalnızca onayladığın bilgiler işlenir.</p>
   <div id="ocrPreview" class="hidden" style="margin-top:12px">
     <div id="ocrSummary" class="notice"></div>
-    <div class="toolbar" style="margin-top:10px"><button class="btn" id="ocrUseButton" onclick="useOcrInvoice()">Alanları faturaya aktar</button><button class="btn secondary" onclick="clearOcr()">Temizle</button></div>
+    <div id="ocrReview" style="margin-top:13px"></div>
+    <div class="toolbar" style="margin-top:10px;flex-wrap:wrap">
+      <button class="btn" id="ocrSaveButton" onclick="saveScannedDocument()">✓ Kontrol ettim, belgeyi kaydet</button>
+      <button class="btn secondary" id="ocrUseButton" onclick="useOcrInvoice()">Fatura taslağına aktar</button>
+      <button class="btn secondary" onclick="clearOcr()">Temizle</button>
+    </div>
     <details style="margin-top:10px"><summary class="muted">Okunan metni göster</summary><pre id="ocrText" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;color:#475569"></pre></details>
   </div>
 </div>
 <div class="panel" id="invoiceList"></div>
-<div class="notice" style="margin-top:12px">OCR okuması taslak oluşturur; vergi numarası, tarih, tutar ve KDV bilgilerini onaylamadan kaydetme. Resmî e-Fatura/e-Arşiv gönderimi bu sürümde etkin değildir.</div></section>
+<div class="notice" style="margin-top:12px">Belge türünü kontrol edin: market fişi, e-Fatura, POS slipi ve irsaliye farklı kayıt türleridir. Satır bilgileri ve toplamlar kaydedilmeden önce kontrol edilir. <b>İrsaliye veya POS slipi otomatik vergi/gider kaydı oluşturmaz.</b> Resmî GİB gönderimi etkin değildir.</div></section>
+
+<section id="documents" class="view">
+<div class="section"><h2>Belge ve irsaliye arşivi</h2><button onclick="showView('invoices')">+ Belge okut</button></div>
+<div class="panel">
+  <p class="muted">Fiş, fatura, POS slipi ve irsaliye ayrı kaydedilir. Belge görüntülerindeki ürünler, miktarlar, fiyatlar ve toplamlar kayıt altına alınır. İrsaliye ve POS slipi tek başına muhasebe gideri oluşturmaz.</p>
+  <div id="documentCounts" class="muted"></div>
+  <div id="documentList"></div>
+</div>
+<div class="notice" style="margin-top:12px">Tüm kayıtlar aktif firma için telefonda şifreli tutulur. Kayıtlı belgeyi fatura ile eşleştirmek ikinci kez mali kayıt oluşturmaz. Resmî belge geçerliliği ayrıca kontrol edilmelidir.</div>
+</section>
 
 <section id="employees" class="view"><div class="section"><h2>Personel kayıtları</h2><button onclick="openForm('employee')">+ Personel ekle</button></div><div class="panel" id="employeeList"></div><div class="notice" style="margin-top:12px">Personel bilgileri ve bordro ön hesapları içindir. SGK bildirgesi veya resmî bordro oluşturmaz.</div></section>
 <section id="payroll" class="view"><div class="section"><h2>Bordro ön hesapları</h2><button onclick="openForm('payroll')">+ Bordro ekle</button></div><div class="panel" id="payrollList"></div><div class="notice" style="margin-top:12px">Net tutar, girilen brüt ücret + ek ödeme - kesintiler şeklinde basit ön hesaplamadır. Vergi, SGK ve teşvik hesapları resmî mevzuat hesabı değildir.</div></section>
@@ -145,6 +160,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <section id="calendar" class="view"><div class="section"><h2>Vergi ve ödeme takvimi</h2><button onclick="openForm('reminder')">+ Hatırlatma</button></div><div class="panel" id="reminderList"></div><p class="muted">Vergi ve SGK son tarihlerini güncel resmî takvimden doğrulayarak ekleyin.</p></section>
 
 <section id="more" class="view"><div class="section"><h2>Modüller</h2></div><div class="modulegrid">
+<button onclick="showView('documents')"><span class="ico">📋</span><b>Fiş / İrsaliye Arşivi</b><span class="muted">Ürün kalemleri, eşleştirme</span></button>
 <button onclick="showView('bankStatement')"><span class="ico">⇄</span><b>Banka ekstreleri</b><span class="muted">CSV / Excel, mutabakat</span></button>
 <button onclick="showView('audit')"><span class="ico">✓</span><b>Hata denetimi</b><span class="muted">Fatura, fiş, banka kontrolü</span></button>
 <button onclick="showView('companies')"><span class="ico">▣</span><b>Mükellefler</b><span class="muted">Firma kayıtları ve geçiş</span></button>
@@ -176,7 +192,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
 <hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
 <button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
-<p class="muted">Sürüm <span id="appVersionText">0.8.0</span> • Güncellenebilir sürüm</p>
+<p class="muted">Sürüm <span id="appVersionText">0.9.0</span> • Güncellenebilir sürüm</p>
 </div></section>
 </main>
 
@@ -192,10 +208,11 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="toprow"><h2 id="formTitle">Yeni kayıt</h2><button class="btn secondary" onclick="closeForm()">Kapat</button></div><div id="formBody"></div>
 </div></div>
 
+<script src="document_parser.js"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],bankRows:[],payrollEstimates:[],officialTasks:[],settings:{businessName:''}};
+const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],bankRows:[],payrollEstimates:[],officialTasks:[],documents:[],settings:{businessName:''}};
 const DEFAULT_CHART=[['100','Kasa'],['102','Bankalar'],['108','Diğer Hazır Değerler'],['120','Alıcılar'],['191','İndirilecek KDV'],['320','Satıcılar'],['391','Hesaplanan KDV'],['600','Yurtiçi Satışlar'],['649','Diğer Olağan Gelir ve Kârlar'],['770','Genel Yönetim Giderleri']];
 let db=JSON.parse(JSON.stringify(emptyDB)),unlocked=false,formKind='',overdueNoticeShown=false,idSequence=Date.now(),readOnlyRecovery=false;
 function newRecordId(){idSequence=Math.max(Date.now(),idSequence+1);return idSequence;}
@@ -205,18 +222,18 @@ const dateToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getM
 function defaultChartFor(companyId){return DEFAULT_CHART.map((x,i)=>({id:Number(companyId)*100+i+1,companyId,code:x[0],name:x[1]}))}
 function normalizeDB(data){
  const d=Object.assign({},JSON.parse(JSON.stringify(emptyDB)),data||{});
- for(const k of ['companies','customers','transactions','invoices','reminders','employees','payroll','accounts','assets','chartAccounts','ledgerEntries','vouchers','instruments','bankRows','payrollEstimates','officialTasks'])if(!Array.isArray(d[k]))d[k]=[];
+ for(const k of ['companies','customers','transactions','invoices','reminders','employees','payroll','accounts','assets','chartAccounts','ledgerEntries','vouchers','instruments','bankRows','payrollEstimates','officialTasks','documents'])if(!Array.isArray(d[k]))d[k]=[];
  if(!d.settings)d.settings={businessName:''};
  if(!d.companies.length){const id=Date.now();d.companies=[{id,name:d.settings.businessName||'Genel İşletme',type:'business',taxOffice:'',taxNo:'',phone:'',email:'',address:'',fiscalYear:String(new Date().getFullYear())}];d.activeCompanyId=id;}
  if(!d.companies.some(c=>Number(c.id)===Number(d.activeCompanyId)))d.activeCompanyId=d.companies[0].id;
  if(!d.accounts.length)d.accounts=[{id:Date.now()+1,companyId:d.activeCompanyId,name:'Kasa',kind:'cash',opening:0},{id:Date.now()+2,companyId:d.activeCompanyId,name:'Banka',kind:'bank',opening:0}];
  for(const c of d.companies){const codes=d.chartAccounts.filter(a=>Number(a.companyId)===Number(c.id)).map(a=>String(a.code));DEFAULT_CHART.forEach((a,i)=>{if(!codes.includes(a[0]))d.chartAccounts.push({id:Number(String(c.id).slice(-8))+i+1,companyId:c.id,code:a[0],name:a[1]});});}
- for(const k of ['customers','transactions','invoices','reminders','employees','payroll','accounts','assets','ledgerEntries','vouchers','instruments','bankRows'])d[k].forEach(x=>{if(!x.companyId)x.companyId=d.activeCompanyId;});
+ for(const k of ['customers','transactions','invoices','reminders','employees','payroll','accounts','assets','ledgerEntries','vouchers','instruments','bankRows','documents'])d[k].forEach(x=>{if(!x.companyId)x.companyId=d.activeCompanyId;});
  return d;
 }
 function activeCompany(){return db.companies.find(c=>Number(c.id)===Number(db.activeCompanyId))||db.companies[0]}
 function scoped(type){return (db[type]||[]).filter(x=>!x.companyId||Number(x.companyId)===Number(db.activeCompanyId))}
-function switchCompany(id){db.activeCompanyId=Number(id);pendingBank=null;clearBankPreview();migrateLegacyData();persist()}
+function switchCompany(id){db.activeCompanyId=Number(id);pendingBank=null;pendingOcr=null;clearBankPreview();if($('ocrPreview'))$('ocrPreview').classList.add('hidden');migrateLegacyData();persist()}
 function chartAccount(code){return scoped('chartAccounts').find(x=>String(x.code)===String(code))}
 function chartOptions(){return scoped('chartAccounts').map(a=>'<option value="'+esc(a.code)+'">'+esc(a.code+' - '+a.name)+'</option>').join('')}
 function customerOptions(){return '<option value="">Cari seç (isteğe bağlı)</option>'+scoped('customers').map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')}
@@ -297,11 +314,11 @@ $('formTitle').textContent=({company:'Mükellef / firma ekle',transaction:'Gelir
 $('formBody').innerHTML=f+'<button class="btn" style="width:100%;margin-top:10px" onclick="saveForm()">Kaydet</button>';$('formBody').querySelectorAll('input[type=date]').forEach(x=>x.value=dateToday());$('formBody').querySelectorAll('input[type=month]').forEach(x=>x.value=dateToday().slice(0,7));if(kind==='invoice'&&pendingOcr){const values={number:pendingOcr.number,party:pendingOcr.party,taxNo:pendingOcr.taxNo,date:pendingOcr.date,net:pendingOcr.net,vatRate:pendingOcr.vatRate};Object.entries(values).forEach(([key,value])=>{const input=$('formBody').querySelector('[name="'+key+'"]');if(input&&value!==''&&value!==null&&value!==undefined)input.value=value;});}if(kind==='invoice'){const customerSelect=$('formBody').querySelector('[name="customerId"]');if(customerSelect)customerSelect.addEventListener('change',()=>{const c=scoped('customers').find(x=>Number(x.id)===Number(customerSelect.value));const party=$('formBody').querySelector('[name="party"]');if(c&&party)party.value=c.name;});} $('modal').classList.remove('hidden')}
 function closeForm(){$('modal').classList.add('hidden')}
 function readForm(){const o={};$('formBody').querySelectorAll('input,select').forEach(x=>o[x.name]=x.value);return o}
-let pendingOcr=null;
+let pendingOcr=null,pendingOcrSourceDocumentId=0,editingDocumentId=0;
 function takePhotoInApp(){
   if(!unlocked)return NativeStore.showMessage('Önce şifre ile giriş yapın.');
   if(readOnlyRecovery)return NativeStore.showMessage('Kayıt koruma modunda. Yedeği geri yükleyin.');
-  pendingOcr=null;
+  pendingOcr=null;editingDocumentId=0;
   if($('ocrPreview'))$('ocrPreview').classList.add('hidden');
   if($('ocrStatus'))$('ocrStatus').textContent='Uygulama içi kamera açılıyor...';
   try{NativeStore.openInvoiceCamera()}catch(e){NativeStore.showMessage('Kamera açılamadı. Uygulama izinlerini kontrol edin.');}
@@ -312,7 +329,22 @@ window.onEmbeddedCameraStatus=function(data){
   if($('ocrStatus'))$('ocrStatus').textContent=message;
 };
 function handleInvoiceImage(event){const file=event.target.files&&event.target.files[0];if(!file)return;if(!file.type.startsWith('image/')){NativeStore.showMessage('Lütfen JPG, PNG veya WEBP fotoğrafı seçin.');return;}if(file.size>15000000){NativeStore.showMessage('Fotoğraf 15 MB sınırını aşıyor. Daha küçük bir fotoğraf seçin.');return;}$('ocrStatus').textContent='Fotoğraf hazırlanıyor...';$('ocrPreview').classList.add('hidden');const reader=new FileReader();reader.onload=()=>{const data=String(reader.result||'').split(',')[1];if(!data){$('ocrStatus').textContent='Fotoğraf okunamadı.';return;}$('ocrStatus').textContent='Fatura metni cihazda okunuyor...';NativeStore.recognizeInvoiceImage(data);};reader.onerror=()=>$('ocrStatus').textContent='Fotoğraf dosyası açılamadı.';reader.readAsDataURL(file);}
-window.onInvoiceOcrResult=function(result){if(!result||!result.success){$('ocrStatus').textContent=(result&&result.error)||'Fatura okunamadı.';return;}const text=result.text||'';if(!text.trim()){$('ocrStatus').textContent='Fotoğrafta okunabilir yazı bulunamadı. Daha net ve düz bir fotoğraf deneyin.';return;}pendingOcr=parseInvoiceText(text);pendingOcr.text=text;$('ocrText').textContent=text;$('ocrSummary').innerHTML='<b>Okunan alan önerileri</b><br>Fatura numarası: '+esc(pendingOcr.number||'Bulunamadı')+'<br>Firma önerisi: '+esc(pendingOcr.party||'Elle girilmeli')+'<br>Vergi no/TCKN: '+esc(pendingOcr.taxNo||'Bulunamadı')+'<br>Fatura tarihi: '+esc(pendingOcr.date||'Bulunamadı')+'<br>KDV hariç tutar: '+esc(pendingOcr.net?money(pendingOcr.net):'Bulunamadı')+'<br>KDV oranı: '+esc(pendingOcr.vatRate!==''?('%'+pendingOcr.vatRate):'Elle girilmeli');$('ocrStatus').textContent='Metin okundu. Önerilen alanları kontrol et.';$('ocrPreview').classList.remove('hidden');};
+window.onInvoiceOcrResult=function(result){
+  if(!result||!result.success){$('ocrStatus').textContent=(result&&result.error)||'Belge okunamadı.';return;}
+  const text=String(result.text||'');
+  if(!text.trim()){$('ocrStatus').textContent='Okunabilir yazı bulunamadı. Daha net fotoğraf veya PDF deneyin.';return;}
+  try{
+    if(!window.DocumentParser)throw new Error('Belge ayrıştırıcısı yüklenmedi.');
+    pendingOcr=DocumentParser.parseDocument(text,result.lines||[]);
+    editingDocumentId=0;
+    pendingOcr.text=text;
+    pendingOcrSourceDocumentId=0;
+    $('ocrText').textContent=text;
+    renderOcrReview();
+    $('ocrStatus').textContent='Belge okundu. Otomatik aktarılan bilgileri düzeltip onaylayın.';
+    $('ocrPreview').classList.remove('hidden');
+  }catch(e){$('ocrStatus').textContent='Belge alanları ayrıştırılamadı: '+String(e.message||e);}
+};
 function parseTurkishMoney(value){if(!value)return 0;let s=String(value).replace(/[^0-9,.-]/g,'');if(!s)return 0;const comma=s.lastIndexOf(','),dot=s.lastIndexOf('.');if(comma>-1&&dot>-1){if(comma>dot)s=s.replace(/\./g,'').replace(',','.');else s=s.replace(/,/g,'');}else if(comma>-1){const decimals=s.length-comma-1;s=decimals===2?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');}else if(dot>-1){const decimals=s.length-dot-1;if(decimals!==2)s=s.replace(/\./g,'');}const n=Number(s);return Number.isFinite(n)?n:0;}
 function findInvoiceAmount(text,labels){for(const label of labels){const re=new RegExp(label+'(?:\\s*\\(?\\s*%?\\s*\\d{1,2}\\s*%?\\s*\\)?)?\\s*[:\\-]?\\s*(?:₺|TL)?\\s*([0-9][0-9.,]*)','i');const m=text.match(re);if(m){const value=parseTurkishMoney(m[1]);if(value>0)return value;}}return 0;}
 function parseInvoiceText(text){const tax=(text.match(/(?:VKN|Vergi\s*No\.?|Vergi\s*Numarası|TCKN|T\.?C\.?\s*Kimlik\s*No)\s*[:\-]?\s*(\d{10,11})/i)||[])[1]||'';const number=(text.match(/(?:Fatura\s*(?:No|Numarası|Numarasi)|Belge\s*No|Invoice\s*No)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,})/i)||[])[1]||'';let dateText=(text.match(/(?:Fatura\s*Tarihi|Düzenleme\s*Tarihi|Belge\s*Tarihi)\s*[:\-]?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i)||[])[1]||'';if(!dateText)dateText=(text.match(/\b(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})\b/)||[])[1]||'';let iso='';if(dateText){const p=dateText.split(/[.\/-]/);if(p.length===3)iso=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
@@ -320,8 +352,15 @@ let vatRate=(text.match(/(?:KDV|KDV Oranı|KDV Orani)\s*[:(]?\s*%?\s*(\d{1,2})\s
 const net=findInvoiceAmount(text,['Mal\\s*Hizmet\\s*Toplam\\s*Tutarı','Mal\\s*Hizmet\\s*Toplam\\s*Tutari','Vergi\\s*Hariç\\s*(?:Toplam\\s*)?Tutarı','Vergi\\s*Haric\\s*(?:Toplam\\s*)?Tutari','Ara\\s*Toplam','Matrah']);const vat=findInvoiceAmount(text,['Hesaplanan\\s*KDV','Toplam\\s*KDV','KDV\\s*Tutarı','KDV\\s*Tutari']);const total=findInvoiceAmount(text,['Vergiler\\s*Dahil\\s*Toplam\\s*Tutarı','Vergiler\\s*Dahil\\s*Toplam\\s*Tutari','Ödenecek\\s*Tutar','Odenecek\\s*Tutar','Genel\\s*Toplam','Toplam\\s*Tutar']);let finalNet=net;if(!finalNet&&total&&vat)finalNet=Math.max(0,total-vat);if(!finalNet&&total&&vatRate)finalNet=total/(1+Number(vatRate)/100);if(!finalNet&&vat&&vatRate)finalNet=vat*100/Number(vatRate);
 const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const party=lines.find(x=>x.length>2&&x.length<70&&!/FATURA|E-ARŞİV|E-FATURA|SAYIN|TARİH|TARIH|VERGİ|VERGI|VKN|TCKN|TOPLAM|KDV|HESAPLANAN|MAL HİZMET|MAL HIZMET|TUTAR|MATRAH|ÖDENECEK|ODENECEK|TEL|ADRES/i.test(x))||'';
 return {number,party,taxNo:tax,date:iso,net:finalNet?finalNet.toFixed(2):'',vatRate:vatRate?String(Number(vatRate)):'',vat,total};}
-function useOcrInvoice(){if(!pendingOcr)return;openForm('invoice');}
-function clearOcr(){pendingOcr=null;$('invoiceImage').value='';if($('invoicePdf'))$('invoicePdf').value='';$('ocrPreview').classList.add('hidden');$('ocrStatus').textContent='Henüz fotoğraf veya PDF seçilmedi.';}
+function useOcrInvoice(){
+  if(!pendingOcr)return;
+  const reviewed=readReviewedDocument();
+  if(!['einvoice','invoice'].includes(reviewed.documentType)){NativeStore.showMessage('İrsaliye, POS slipi veya fiş faturaya otomatik dönüştürülemez. Önce belge türünü kontrol edin.');return;}
+  if(!reviewed.party||reviewed.total<=0)return NativeStore.showMessage('Firma adı ve toplam tutarı kontrol et.');
+  pendingOcr={...reviewed,text:pendingOcr.text,sourceDocumentId:pendingOcrSourceDocumentId};
+  openForm('invoice');
+}
+function clearOcr(){pendingOcr=null;pendingOcrSourceDocumentId=0;editingDocumentId=0;$('invoiceImage').value='';if($('invoicePdf'))$('invoicePdf').value='';$('ocrPreview').classList.add('hidden');$('ocrStatus').textContent='Henüz fotoğraf veya PDF seçilmedi.';}
 function saveForm(){if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modu açık. Önce şifreli yedek geri yüklenmeli.');const d=readForm(),id=newRecordId();
 if(formKind==='company'){if(!d.name)return NativeStore.showMessage('Firma adı girin.');const company={...d,id,fiscalYear:d.fiscalYear||String(new Date().getFullYear())};db.companies.push(company);db.activeCompanyId=id;db.accounts.push({id:id+1,companyId:id,name:'Kasa',kind:'cash',opening:0},{id:id+2,companyId:id,name:'Banka',kind:'bank',opening:0});db.chartAccounts.push(...defaultChartFor(id));}
 if(formKind==='transaction'){if(!d.description||Number(d.amount)<=0)return NativeStore.showMessage('Açıklama ve geçerli tutar girin.');const tx={...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),accountId:Number(d.accountId)||scoped('accounts')[0]?.id};db.transactions.unshift(tx);addTransactionVoucher(tx);}
@@ -336,11 +375,12 @@ if(formKind==='invoice'){
  if(paid>=total-0.01)d.status='paid';else if(paid>0)d.status='partial';else d.status='unpaid';
  let customer=scoped('customers').find(c=>Number(c.id)===Number(d.customerId))||scoped('customers').find(c=>String(c.name||'').trim().toLocaleLowerCase('tr-TR')===String(d.party||'').trim().toLocaleLowerCase('tr-TR'));
  if(!customer){const customerId=newRecordId();customer={id:customerId,companyId:db.activeCompanyId,name:d.party,type:d.type==='sale'?'customer':'supplier',taxNo:d.taxNo||'',phone:'',email:'',address:'',openingReceivable:0,openingPayable:0};db.customers.unshift(customer);}
- const inv={...d,id,companyId:db.activeCompanyId,customerId:customer.id,net,vatRate:rate,vat,total,paidAmount:paid,ocrSourceText:pendingOcr?.text||''};db.invoices.unshift(inv);
+ const inv={...d,id,companyId:db.activeCompanyId,customerId:customer.id,net,vatRate:rate,vat,total,paidAmount:paid,ocrSourceText:pendingOcr?.text||'',items:(pendingOcr?.items||[]).map(x=>({...x})),sourceDocumentId:pendingOcrSourceDocumentId||0};db.invoices.unshift(inv);
+ if(pendingOcrSourceDocumentId){const source=scoped('documents').find(x=>Number(x.id)===Number(pendingOcrSourceDocumentId));if(source)source.linkedInvoiceId=id;}
  addLedgerEntry({customerId:customer.id,party:customer.name,kind:d.type==='sale'?'receivable':'payable',amount:total,date:d.date,description:'Fatura '+(d.number||''),sourceType:'invoice',sourceId:id});
  addInvoiceVoucher(inv);
  if(paid>0){const paymentId=newRecordId();const tx={id:paymentId,companyId:db.activeCompanyId,date:d.date||dateToday(),type:d.type==='sale'?'income':'expense',description:(d.type==='sale'?'Fatura tahsilatı ':'Fatura ödemesi ')+(d.number||''),amount:paid,category:d.type==='sale'?'Fatura tahsilatı':'Fatura ödemesi',party:customer.name,accountId:Number(d.accountId)||scoped('accounts')[0]?.id,customerId:customer.id,sourceType:'invoice-payment',sourceId:id};db.transactions.unshift(tx);addLedgerEntry({customerId:customer.id,party:customer.name,kind:d.type==='sale'?'receivable':'payable',amount:-paid,date:d.date,description:d.type==='sale'?'Fatura tahsilatı':'Tedarikçi ödemesi',sourceType:'invoice-payment',sourceId:id});addTransactionVoucher(tx);}
- pendingOcr=null;
+ pendingOcr=null;pendingOcrSourceDocumentId=0;
 }
 if(formKind==='employee'){if(!d.name)return NativeStore.showMessage('Personel adı girin.');d.gross=Number(d.gross)||0;db.employees.unshift({...d,id,companyId:db.activeCompanyId});}
 if(formKind==='payroll'){const e=scoped('employees').find(x=>x.id===Number(d.employeeId));if(!e)return NativeStore.showMessage('Önce personel kaydı ekleyin.');const gross=Number(d.gross||e.gross)||0,extras=Number(d.extras)||0,deductions=Number(d.deductions)||0;if(gross+extras<deductions)return NativeStore.showMessage('Kesintiler toplam kazançtan fazla olamaz.');db.payroll.unshift({...d,id,companyId:db.activeCompanyId,employeeName:e.name,gross,extras,deductions,net:gross+extras-deductions});}
@@ -380,6 +420,9 @@ function removeItem(type,id){
     db.ledgerEntries=db.ledgerEntries.filter(e=>!(e.companyId==db.activeCompanyId&&['invoice','invoice-payment'].includes(e.sourceType)&&Number(e.sourceId)===Number(id)));
     db.vouchers=db.vouchers.filter(v=>!(v.companyId==db.activeCompanyId&&['invoice','invoice-payment'].includes(v.sourceType)&&Number(v.sourceId)===Number(id)));
     db.transactions=db.transactions.filter(t=>!(t.companyId==db.activeCompanyId&&t.sourceType==='invoice-payment'&&Number(t.sourceId)===Number(id)));
+    for(const doc of scoped('documents')){
+      if(Number(doc.linkedInvoiceId)===Number(id))doc.linkedInvoiceId=0;
+    }
  }
  if(type==='transactions'){
     db.ledgerEntries=db.ledgerEntries.filter(e=>!(e.companyId==db.activeCompanyId&&e.sourceType==='settlement'&&Number(e.sourceId)===Number(id)));
@@ -389,13 +432,16 @@ function removeItem(type,id){
         row.status='unmatched';row.matchedTxId=0;row.suggestedTxId=0;
       }
     }
+    for(const doc of scoped('documents')){
+      if(Number(doc.linkedTransactionId)===Number(id))doc.linkedTransactionId=0;
+    }
  }
  db[type]=db[type].filter(x=>!sameId(x));
  persist();
 }
 function listRows(items,type){if(!items.length)return '<div class="empty">Henüz kayıt bulunmuyor.</div>';return items.map(x=>{let title=x.description||x.name||x.party||x.title||x.number||x.employeeName||'Kayıt',sub=x.date||x.startDate||x.period||x.phone||'';let val='',extra='';
 if(type==='transactions')val='<b class="'+(x.type==='income'?'positive':'negative')+'">'+(x.type==='income'?'+':'-')+money(x.amount)+'</b>';
-if(type==='invoices'){const late=x.dueDate&&x.dueDate<dateToday()&&invoiceRemaining(x)>0.009;val='<b>'+money(x.total)+'</b><div class="muted">'+(x.type==='sale'?'Satış':'Alış')+' • KDV '+money(x.vat)+'</div><div class="badge">'+(late?'Vadesi geçti':x.status==='paid'?'Ödendi':x.status==='partial'?'Kısmen ödendi':'Ödenmedi')+'</div>';}
+if(type==='invoices'){const late=x.dueDate&&x.dueDate<dateToday()&&invoiceRemaining(x)>0.009;val='<b>'+money(x.total)+'</b><div class="muted">'+(x.type==='sale'?'Satış':'Alış')+' • KDV '+money(x.vat)+'</div><div class="badge">'+(late?'Vadesi geçti':x.status==='paid'?'Ödendi':x.status==='partial'?'Kısmen ödendi':'Ödenmedi')+'</div>'+(x.items?.length?'<div><button class="tag" onclick="showInvoiceItems('+x.id+')">'+x.items.length+' ürün satırını gör</button></div>':'');}
 if(type==='payroll')val='<b>'+money(x.net)+'</b><div class="muted">Net ön hesap</div>';
 if(type==='assets'){const annual=x.cost/x.life;val='<b>'+money(x.cost)+'</b><div class="muted">Yıllık tahmini amortisman: '+money(annual)+'</div>'}
 if(type==='reminders'){const due=new Date(x.date+'T00:00:00'),now=new Date(dateToday()+'T00:00:00'),days=Math.ceil((due-now)/86400000);extra='<span class="badge">'+(days<0?'Gecikmiş':days===0?'Bugün':days+' gün kaldı')+'</span>'}
@@ -404,6 +450,19 @@ if(type==='employees')sub=(x.title||'Personel')+(x.startDate?' • '+x.startDate
 if(type==='instruments'){const late=x.status==='pending'&&x.dueDate&&x.dueDate<dateToday();extra='<span class="badge">'+(late?'Vadesi geçti':x.status==='paid'?'Ödendi':x.status==='bounced'?'Karşılıksız':x.status==='endorsed'?'Ciro edildi':x.status==='returned'?'İade':'Bekliyor')+'</span>';val='<b>'+money(x.amount)+'</b>'}
 if(type==='vouchers'){extra='<span class="badge">'+(x.status==='approved'?'Onaylandı':'Taslak')+'</span>';val='<b>'+money(x.debitTotal)+'</b>'}
 return '<div class="row"><div style="min-width:0;flex:1"><b>'+esc(title)+'</b><div class="muted">'+esc(sub)+'</div></div><div style="text-align:right">'+extra+val+'<div><button class="muted" style="border:0;background:none" onclick="removeItem(\''+type+'\','+x.id+')">Sil</button></div></div></div>'}).join('')}
+function showInvoiceItems(id){
+  const inv=scoped('invoices').find(x=>Number(x.id)===Number(id));if(!inv)return;
+  $('formTitle').textContent='Fatura kalemleri — '+(inv.number||'Numarasız');
+  const rows=(inv.items||[]).map((i,idx)=>'<div class="row"><div style="min-width:0;flex:1">'+
+    '<b>'+esc((idx+1)+'. '+(i.code?i.code+' • ':'')+(i.name||''))+'</b>'+
+    '<div class="muted">'+esc(i.quantity)+' '+esc(i.unit)+' × '+money(i.unitPrice)+
+    (i.vatRate===null||i.vatRate===undefined?'':' • KDV %'+esc(i.vatRate))+
+    '</div></div><b>'+money(i.amount)+'</b></div>').join('');
+  $('formBody').innerHTML='<div class="notice">Fatura türü: '+esc(inv.type==='sale'?'Satış':'Alış')+
+    ' • '+esc(inv.party)+'<br>Matrah: '+money(inv.net)+' • KDV: '+money(inv.vat)+
+    ' • Toplam: '+money(inv.total)+'</div>'+(rows||'<div class="empty">Satır bilgisi kaydedilmemiş.</div>');
+  $('modal').classList.remove('hidden');
+}
 function accountBalance(a){const movements=scoped('transactions').filter(x=>Number(x.accountId)===Number(a.id));return Number(a.opening||0)+movements.reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0)}
 function setVoucherStatus(id,status){const v=scoped('vouchers').find(x=>Number(x.id)===Number(id));if(!v)return;v.status=status;persist()}
 function setInstrumentStatus(id,status){const x=scoped('instruments').find(i=>Number(i.id)===Number(id));if(!x)return;x.status=status;persist()}
@@ -421,7 +480,7 @@ const vatSales=invoices.filter(x=>x.type==='sale').reduce((s,x)=>s+x.vat,0),vatP
 $('businessName').value=company.name||'';$('companyTitle').textContent=company.name||'Mali Durum Özeti';
 renderVouchers();renderReceivables();renderInstruments();$('reportMonth').value=$('reportMonth').value||dateToday().slice(0,7);renderReports();
 $('cashbookDate').value=$('cashbookDate').value||dateToday();const selectedCashAccount=$('cashbookAccount').value;$('cashbookAccount').innerHTML='<option value="all">Tüm hesaplar</option>'+accountsList.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');if(selectedCashAccount&&[...$('cashbookAccount').options].some(x=>x.value===selectedCashAccount))$('cashbookAccount').value=selectedCashAccount;renderCashbook();
-renderBankStatement();renderAudit();
+renderBankStatement();renderAudit();renderDocuments();
 }function saveSettings(){const name=$('businessName').value.trim();if(name){activeCompany().name=name;db.settings.businessName=name;}persist();NativeStore.showMessage('Aktif firma bilgisi kaydedildi.')}
 function backup(){const p=prompt('Şifreli yedek için en az 8 karakterli bir parola belirleyin:');if(!p)return;if(p.length<8)return NativeStore.showMessage('Yedek parolası en az 8 karakter olmalı.');const r=NativeStore.saveBackup(JSON.stringify({app:'AkilliMuhasebe',version:2,createdAt:new Date().toISOString(),data:db}),p);if(r!=='ok')NativeStore.showMessage('Yedek oluşturulamadı.')}
 function restoreBackup(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const p=prompt('Bu yedeği oluştururken kullandığınız parolayı girin:');if(!p)return;try{const plain=NativeStore.decryptBackup(String(reader.result),p);if(!plain||plain==='ERROR')throw new Error('password');const payload=JSON.parse(plain);if(payload.app!=='AkilliMuhasebe'||!payload.data||!Array.isArray(payload.data.companies)||!Array.isArray(payload.data.transactions))throw new Error('Yedek biçimi geçersiz');const restored=normalizeDB(payload.data);const firmCount=restored.companies.length,recordCount=restored.transactions.length;if(!confirm(firmCount+' firma ve '+recordCount+' işlem içeren yedek mevcut kayıtların yerine yüklenecek. Devam edilsin mi?'))return;const status=NativeStore.saveRestoredData(JSON.stringify(restored));if(status!=='ok')throw new Error('Yedek güvenli şekilde saklanamadı');db=restored;readOnlyRecovery=false;if($('recoveryWarning'))$('recoveryWarning').classList.add('hidden');migrateLegacyData();persist();NativeStore.showMessage('Yedek başarıyla geri yüklendi.')}catch(err){NativeStore.showMessage('Yedek açılamadı veya yüklenemedi. Mevcut veriler korundu.')}};reader.onerror=()=>NativeStore.showMessage('Yedek dosyası okunamadı.');reader.readAsText(file);e.target.value=''}
@@ -641,6 +700,266 @@ function handleInvoicePdf(event){
   reader.onload=()=>{const base64=String(reader.result||'').split(',')[1];if(!base64){$('ocrStatus').textContent='PDF açılamadı.';return;}NativeStore.recognizeInvoicePdf(base64);};
   reader.onerror=()=>$('ocrStatus').textContent='PDF okunamadı.';
   reader.readAsDataURL(file);
+}
+
+
+/* ---- Document capture: receipts, e-invoices, POS slips and delivery notes ---- */
+function documentTypeName(type){
+  return ({receipt:'Market / perakende fişi',einvoice:'e-Fatura / e-Arşiv',
+    invoice:'Diğer fatura',delivery_note:'İrsaliye',pos:'POS slipi',
+    unknown:'Diğer belge'})[type]||'Belge';
+}
+function ocrInput(label,id,value,type){
+  type=type||'text';
+  const numeric=type==='number'?' inputmode="decimal" step="any"':'';
+  return '<div class="field"><label>'+esc(label)+'</label><input id="'+id+'" type="'+type+'" value="'+esc(value==null?'':value)+'"'+numeric+'></div>';
+}
+function renderOcrReview(){
+  if(!pendingOcr)return;
+  const d=pendingOcr;
+  const typeOptions=['receipt','einvoice','delivery_note','pos','invoice','unknown']
+    .map(t=>'<option value="'+t+'"'+(d.documentType===t?' selected':'')+'>'+documentTypeName(t)+'</option>').join('');
+  const warnings=(d.warnings||[]).map(w=>'<div class="muted">⚠ '+esc(w)+'</div>').join('');
+  $('ocrSummary').innerHTML='<b>'+esc(documentTypeName(d.documentType))+'</b> • '+(d.items||[]).length+
+    ' ürün/hizmet satırı<br><b>Genel toplam:</b> '+(d.total==null?'Belirsiz':money(d.total))+
+    '<br><b>Satır toplamı:</b> '+money(d.itemSum||0)+
+    (warnings?'<div style="margin-top:9px">'+warnings+'</div>':'');
+  $('ocrReview').innerHTML='<div class="section"><h2>Okunan alanları kontrol et</h2></div>'+
+    '<div class="formgrid"><div class="field"><label>Belge türü (düzenlenebilir)</label><select id="ocrDocumentType" onchange="updateOcrTypeControls()">'+typeOptions+'</select></div>'+
+    ocrInput('Firma / satıcı adı','ocrParty',d.party)+
+    ocrInput('Fiş / fatura / irsaliye numarası','ocrNumber',d.number)+
+    ocrInput('Tarih','ocrDate',d.date,'date')+
+    ocrInput('Saat','ocrTime',d.time)+
+    ocrInput('Vergi numarası / TCKN','ocrTaxNo',d.taxNo)+
+    ocrInput('Genel toplam (TL)','ocrTotal',d.total,'number')+
+    ocrInput('KDV (TL) (varsa)','ocrVat',d.vat,'number')+
+    ocrInput('KDV oranı (%) (varsa)','ocrVatRate',d.vatRate,'number')+
+    ocrInput('KDV hariç (TL) (varsa)','ocrNet',d.net,'number')+
+    '<div class="field"><label>Ödeme yöntemi</label><select id="ocrPayment"><option value="unknown">Belirsiz</option><option value="cash">Nakit</option><option value="card">Kart / POS</option><option value="transfer">Havale</option></select></div></div>'+
+    '<div class="section"><h2>Ürün / hizmet kalemleri</h2><button onclick="addOcrItem()">+ Ürün ekle</button></div>'+
+    '<div class="muted">Miktar, birim fiyat ve tutarı karşılaştır. El yazısı notları otomatik onaylama.</div>'+
+    '<div id="ocrItemRows"></div>';
+  $('ocrPayment').value=d.payment||'unknown';
+  renderOcrItems();
+  updateOcrTypeControls();
+}
+function updateOcrTypeControls(){
+  const t=$('ocrDocumentType')?.value;
+  $('ocrUseButton')?.classList.toggle('hidden',!['einvoice','invoice'].includes(t));
+}
+function renderOcrItems(){
+  if(!$('ocrItemRows'))return;
+  const items=pendingOcr?.items||[];
+  $('ocrItemRows').innerHTML=items.map((x,i)=>
+    '<div class="panel" style="margin:8px 0;padding:11px" data-document-item="'+i+'">'+
+    '<div class="toprow"><b>Satır '+(i+1)+'</b><button class="tag" onclick="removeOcrItem('+i+')">Sil</button></div>'+
+    '<div class="formgrid" style="margin-top:8px">'+
+    documentItemInput(i,'code','Ürün kodu',x.code)+
+    documentItemInput(i,'name','Ürün / hizmet adı',x.name)+
+    documentItemInput(i,'quantity','Miktar',x.quantity)+
+    documentItemInput(i,'unit','Birim',x.unit)+
+    documentItemInput(i,'unitPrice','Birim fiyatı (TL)',x.unitPrice)+
+    documentItemInput(i,'amount','Satır toplamı (TL)',x.amount)+
+    documentItemInput(i,'vatRate','KDV oranı (varsa)',x.vatRate)+
+    '</div></div>').join('')||
+    '<div class="notice">OCR ürün satırı çıkaramadı. “Ürün ekle” ile bilgileri elle girebilirsin.</div>';
+}
+function documentItemInput(index,field,label,value){
+  const isNumeric=['quantity','unitPrice','amount','vatRate'].includes(field);
+  return '<div class="field"><label>'+esc(label)+'</label>'+
+    '<input data-document-field="'+field+'" data-index="'+index+'" value="'+esc(value==null?'':value)+'"'+
+    (isNumeric?' type="text" inputmode="decimal"':' type="text"')+'></div>';
+}
+function readOcrItems(){
+  const rows=$('ocrItemRows')?.querySelectorAll('[data-document-item]')||[];
+  const items=[];
+  for(const element of rows){
+    const get=field=>element.querySelector('[data-document-field="'+field+'"]')?.value?.trim()||'';
+    const name=get('name'),quantity=DocumentParser.number(get('quantity'));
+    const unitPrice=DocumentParser.number(get('unitPrice')),amount=DocumentParser.number(get('amount'));
+    const vatRateText=get('vatRate');
+    if(!name&&!get('code'))continue;
+    items.push({name:name.slice(0,180),code:get('code').slice(0,40),quantity:Number.isFinite(quantity)?quantity:0,
+      unit:get('unit').slice(0,32),unitPrice:Number.isFinite(unitPrice)?unitPrice:0,
+      amount:Number.isFinite(amount)?amount:0,
+      vatRate:vatRateText!==''&&Number.isFinite(DocumentParser.number(vatRateText))?
+        DocumentParser.number(vatRateText):null});
+  }
+  return items.slice(0,120);
+}
+function addOcrItem(){
+  if(!pendingOcr)return;
+  pendingOcr.items=readOcrItems();
+  if(pendingOcr.items.length>=120)return NativeStore.showMessage('En fazla 120 satır eklenebilir.');
+  pendingOcr.items.push({code:'',name:'',quantity:1,unit:'ADET',unitPrice:0,amount:0,vatRate:null});
+  renderOcrItems();
+}
+function removeOcrItem(index){
+  if(!pendingOcr)return;
+  const items=readOcrItems();
+  items.splice(index,1);
+  pendingOcr.items=items;renderOcrItems();
+}
+function readReviewedDocument(){
+  if(!pendingOcr)throw new Error('Belge bulunamadı.');
+  const value=id=>$(id)?.value?.trim()||'';
+  const numerical=id=>{const raw=value(id);return raw===''?null:DocumentParser.number(raw);};
+  return {...pendingOcr,
+    documentType:value('ocrDocumentType'),party:value('ocrParty').slice(0,140),
+    number:value('ocrNumber').slice(0,80),date:value('ocrDate'),
+    time:value('ocrTime').slice(0,16),taxNo:value('ocrTaxNo').slice(0,16),
+    total:numerical('ocrTotal'),net:numerical('ocrNet'),vat:numerical('ocrVat'),
+    vatRate:numerical('ocrVatRate'),payment:value('ocrPayment'),items:readOcrItems(),verified:true};
+}
+function validateReviewedDocument(d){
+  if(!d||!['receipt','einvoice','delivery_note','pos','invoice','unknown'].includes(d.documentType))return 'Belge türünü seç.';
+  if(d.total!==null&&(!Number.isFinite(d.total)||d.total<0))return 'Geçerli genel toplam gir.';
+  if(d.net!==null&&(!Number.isFinite(d.net)||d.net<0))return 'KDV hariç tutar geçersiz.';
+  if(d.vat!==null&&(!Number.isFinite(d.vat)||d.vat<0))return 'KDV tutarı geçersiz.';
+  if(d.vatRate!==null&&(!Number.isFinite(d.vatRate)||d.vatRate<0||d.vatRate>100))return 'KDV oranı geçersiz.';
+  if(d.items.some(i=>!i.name||!Number.isFinite(i.quantity)||i.quantity<=0||!Number.isFinite(i.amount)||i.amount<0))return 'Ürün satırlarında ad, miktar veya tutar eksik.';
+  if(d.total===null&&d.items.length===0)return 'Belgenin toplam tutarı veya en az bir ürün kalemi olmalı.';
+  if(d.documentType==='delivery_note'){d.net=null;d.vat=null;d.vatRate=null;}
+  if(d.documentType==='pos'){d.net=null;d.vat=null;d.vatRate=null;}
+  return '';
+}
+function scannedDocumentTotalDiscrepancy(d){
+  const sum=Math.round(d.items.reduce((s,i)=>s+Number(i.amount||0),0)*100)/100;
+  const target=d.documentType==='einvoice'?d.net:d.total;
+  return d.items.length>0&&target!=null&&Math.abs(sum-target)>.06;
+}
+function saveScannedDocument(){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modunda kayıt yapılamaz.');
+  if(!pendingOcr)return NativeStore.showMessage('Önce belgeyi okut.');
+  const d=readReviewedDocument(),error=validateReviewedDocument(d);
+  if(error)return NativeStore.showMessage(error);
+  const key=x=>String(x||'').trim().toLocaleLowerCase('tr-TR');
+  if(scoped('documents').some(doc=>Number(doc.id)!==Number(editingDocumentId)&&
+      (doc.fingerprint===d.fingerprint||
+      (d.number&&doc.documentType===d.documentType&&key(doc.number)===key(d.number)&&
+       key(doc.party)===key(d.party)&&doc.date===d.date)))) {
+    return NativeStore.showMessage('Bu belge daha önce kaydedilmiş. Mükerrer kayıt engellendi.');
+  }
+  if(scannedDocumentTotalDiscrepancy(d)&&!confirm('Ürün kalemleri toplamı ile belge toplamı uyuşmuyor. İndirim / okunamayan satır olabilir. Yine de kaydedilsin mi?'))return;
+  let doc;
+  if(editingDocumentId){
+    doc=scoped('documents').find(x=>Number(x.id)===Number(editingDocumentId));
+    if(!doc)return NativeStore.showMessage('Düzenlenen belge bulunamadı.');
+    if(doc.linkedInvoiceId||doc.linkedTransactionId)return NativeStore.showMessage('Bağlı mali işlemi olan belge düzenlenemez.');
+    Object.assign(doc,{...d,id:doc.id,companyId:db.activeCompanyId,
+      items:d.items.map(item=>({...item})),updatedAt:new Date().toISOString()});
+  }else{
+    doc={...d,id:newRecordId(),companyId:db.activeCompanyId,
+      items:d.items.map(item=>({...item})),linkedInvoiceId:0,linkedTransactionId:0,
+      createdAt:new Date().toISOString()};
+    db.documents.unshift(doc);
+  }
+  delete doc.text;
+  if(doc.rawText)doc.rawText=String(doc.rawText).slice(0,180000);
+  clearOcr();persist();
+  showView('documents');
+  NativeStore.showMessage('Belge bilgileri ve tüm ürün satırları kaydedildi.');
+}
+function editSavedDocument(id){
+  const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
+  if(!doc)return NativeStore.showMessage('Belge bulunamadı.');
+  if(doc.linkedInvoiceId||doc.linkedTransactionId)return NativeStore.showMessage('Bağlı mali işlemi olan belge düzenlenemez.');
+  editingDocumentId=doc.id;pendingOcrSourceDocumentId=0;
+  pendingOcr={...doc,text:doc.rawText||'',items:(doc.items||[]).map(x=>({...x}))};
+  showView('invoices');
+  $('ocrText').textContent=doc.rawText||'Metin arşivi bulunmuyor.';
+  renderOcrReview();
+  $('ocrPreview').classList.remove('hidden');
+  $('ocrStatus').textContent='Kaydedilmiş belgeyi düzenliyorsun. Değişikliklerden sonra kaydet.';
+}
+function openInvoiceFromDocument(id){
+  const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
+  if(!doc||!['einvoice','invoice'].includes(doc.documentType))return NativeStore.showMessage('Bu belge fatura değil.');
+  if(doc.linkedInvoiceId)return NativeStore.showMessage('Bu belge zaten bir faturaya bağlı. İkinci kayıt oluşturulmadı.');
+  pendingOcr={...doc,text:doc.rawText,items:(doc.items||[]).map(x=>({...x}))};
+  pendingOcrSourceDocumentId=doc.id;
+  showView('invoices');
+  openForm('invoice');
+}
+function linkDeliveryToInvoice(id){
+  const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
+  if(!doc||doc.documentType!=='delivery_note')return;
+  const select=$('invoiceLink'+id);
+  const invoice=scoped('invoices').find(x=>Number(x.id)===Number(select?.value));
+  if(!invoice)return NativeStore.showMessage('Önce geçerli faturayı seç.');
+  if(!confirm('İrsaliye '+(doc.number||'numarasız')+' ile '+(invoice.number||'numarasız')+
+     ' numaralı fatura eşleştirilsin mi? Ek muhasebe fişi oluşturulmayacak.'))return;
+  doc.linkedInvoiceId=invoice.id;
+  persist();
+}
+function unlinkDeliveryFromInvoice(id){
+  const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
+  if(!doc||doc.documentType!=='delivery_note'||!doc.linkedInvoiceId)return;
+  if(!confirm('İrsaliyenin fatura eşleştirmesi kaldırılsın mı?'))return;
+  doc.linkedInvoiceId=0;persist();
+}
+function postReceiptExpense(id){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modunda kayıt yapılamaz.');
+  const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
+  if(!doc||doc.documentType!=='receipt')return NativeStore.showMessage('Yalnızca fiş için gider oluşturulur.');
+  if(doc.linkedTransactionId)return NativeStore.showMessage('Bu fiş için gider zaten oluşturulmuş.');
+  const amount=Number(doc.total||0),accountId=Number($('receiptAccount'+id)?.value||0);
+  if(!(amount>0)||!scoped('accounts').some(a=>Number(a.id)===accountId))
+    return NativeStore.showMessage('Fiş toplamı ve ödeme hesabını kontrol et.');
+  if(!confirm('Fiş tutarı '+money(amount)+' için yeni gider ve muhasebe fişi TASLAĞI oluşturulsun mu? Aynı POS slipini ayrıca kaydetme.'))return;
+  const tx={id:newRecordId(),companyId:db.activeCompanyId,date:doc.date||dateToday(),
+    amount,type:'expense',description:'Fiş '+(doc.number||'')+' - '+(doc.party||'Perakende alışveriş'),
+    category:'Perakende fişi',party:doc.party||'',accountId,
+    sourceType:'scanned-receipt',sourceId:doc.id};
+  db.transactions.unshift(tx);
+  addTransactionVoucher(tx);
+  doc.linkedTransactionId=tx.id;
+  persist();
+}
+function renderDocuments(){
+  if(!$('documentList'))return;
+  const docs=scoped('documents');
+  const notes=docs.filter(d=>d.documentType==='delivery_note').length;
+  const receipts=docs.filter(d=>d.documentType==='receipt').length;
+  const invoices=docs.filter(d=>['einvoice','invoice'].includes(d.documentType)).length;
+  $('documentCounts').textContent='Toplam '+docs.length+' belge • '+notes+' irsaliye • '+receipts+
+    ' market fişi • '+invoices+' fatura';
+  const accounts=scoped('accounts');
+  const invoiceOptions=scoped('invoices').map(i=>'<option value="'+i.id+'">'+esc((i.number||'Numarasız')+' — '+(i.party||'')+' ('+money(i.total)+')')+'</option>').join('');
+  $('documentList').innerHTML=docs.slice(0,120).map(d=>{
+    const items=Array.isArray(d.items)?d.items:[];
+    const link=d.linkedInvoiceId?scoped('invoices').find(i=>Number(i.id)===Number(d.linkedInvoiceId)):null;
+    const rows=items.map((i,idx)=>
+      '<div class="row"><span style="min-width:0;flex:1">'+(idx+1)+'. '+esc(i.code?i.code+' • '+i.name:i.name)+
+      '<div class="muted">'+esc(i.quantity)+' '+esc(i.unit)+' × '+money(i.unitPrice)+
+      (i.vatRate==null?'':' • KDV %'+esc(i.vatRate))+'</div></span><b>'+money(i.amount)+'</b></div>').join('');
+    let actions=(!d.linkedInvoiceId&&!d.linkedTransactionId)?
+      '<button class="tag" onclick="editSavedDocument('+d.id+')">Belgeyi düzenle</button> ':' ';
+    if(['einvoice','invoice'].includes(d.documentType)){
+      actions=d.linkedInvoiceId?'<p class="muted">Faturaya aktarıldı.</p>':
+        '<button class="tag" onclick="openInvoiceFromDocument('+d.id+')">Fatura taslağı oluştur</button>';
+    }else if(d.documentType==='delivery_note'){
+      actions=link?'<span class="muted">Bağlı fatura: '+esc(link.number||'Numarasız')+'</span> '+
+        '<button class="tag" onclick="unlinkDeliveryFromInvoice('+d.id+')">Eşleştirmeyi kaldır</button>':
+        '<div class="formgrid"><div class="field"><label>Faturayla eşleştir</label>'+
+        '<select id="invoiceLink'+d.id+'"><option value="">Fatura seç</option>'+invoiceOptions+'</select></div></div>'+
+        '<button class="tag" onclick="linkDeliveryToInvoice('+d.id+')">İrsaliyeyi eşleştir</button>';
+    }else if(d.documentType==='receipt'){
+      actions=d.linkedTransactionId?'<p class="muted">Gider kaydına aktarıldı. Tekrar gider yazılmadı.</p>':
+        '<div class="field"><label>Gider için ödeme hesabı</label><select id="receiptAccount'+d.id+'">'+
+        accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')+'</select></div>'+
+        '<button class="tag" onclick="postReceiptExpense('+d.id+')">Onayla ve gider kaydı oluştur</button>';
+    }else if(d.documentType==='pos')actions='<p class="muted">POS slipi ödeme kanıtıdır. Muhasebeye ikinci gider olarak işlenmez.</p>';
+    return '<details style="border-bottom:1px solid #e5eaf2;padding:12px 0">'+
+      '<summary><b>'+esc(documentTypeName(d.documentType))+'</b> · '+esc(d.party||'Satıcı belirtilmedi')+
+      ' · '+esc(d.date||'Tarih yok')+' <b>'+money(d.total)+'</b></summary>'+
+      '<p class="muted">No: '+esc(d.number||'Okunamadı')+' • VKN: '+esc(d.taxNo||'Okunamadı')+
+      ' • Ürün: '+items.length+'</p>'+
+      (d.warnings||[]).map(w=>'<p class="muted">⚠ '+esc(w)+'</p>').join('')+
+      (rows||'<div class="muted">Ürün kalemi bulunmuyor.</div>')+
+      '<div style="margin-top:12px">'+actions+'</div></details>';
+  }).join('')||'<div class="empty">Henüz okutulmuş belge yok. Faturalar ekranından kamera ile fiş, fatura veya irsaliye okutabilirsin.</div>';
+  if(docs.length>120)$('documentList').innerHTML+='<p class="muted">İlk 120 belge görüntüleniyor. Diğer belgeler kayıtlıdır.</p>';
 }
 
 bootstrap();

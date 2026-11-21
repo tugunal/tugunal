@@ -13,6 +13,7 @@ import android.provider.MediaStore;
 import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.graphics.pdf.PdfRenderer;
 import android.os.ParcelFileDescriptor;
 import android.view.Window;
@@ -34,6 +35,7 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -60,6 +62,7 @@ import javax.crypto.spec.SecretKeySpec;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.android.gms.tasks.Tasks;
 import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
@@ -486,7 +489,7 @@ public class MainActivity extends Activity {
             InputImage input = InputImage.fromFilePath(this, Uri.fromFile(captured));
             activeRecognizer.process(input)
                     .addOnSuccessListener(result ->
-                            sendInvoiceOcrResult(true, result.getText(), ""))
+                            sendInvoiceOcrResult(true, result.getText(), "", result))
                     .addOnFailureListener(error ->
                             sendInvoiceOcrResult(false, "", "Fotoğrafın yazıları okunamadı. Yeniden çekmeyi deneyin."))
                     .addOnCompleteListener(task -> {
@@ -501,11 +504,39 @@ public class MainActivity extends Activity {
     }
 
     private void sendInvoiceOcrResult(boolean success, String text, String error) {
+        sendInvoiceOcrResult(success, text, error, null);
+    }
+
+    private JSONArray positionedOcrLines(Text recognitionResult) {
+        JSONArray lines = new JSONArray();
+        if (recognitionResult == null) return lines;
+        for (Text.TextBlock block : recognitionResult.getTextBlocks()) {
+            for (Text.Line line : block.getLines()) {
+                if (lines.length() >= 600) break;
+                Rect bounds = line.getBoundingBox();
+                if (bounds == null || line.getText() == null) continue;
+                JSONObject data = new JSONObject();
+                try {
+                    data.put("text", line.getText());
+                    data.put("x", bounds.left);
+                    data.put("y", bounds.top);
+                    data.put("width", bounds.width());
+                    data.put("height", bounds.height());
+                    lines.put(data);
+                } catch (Exception ignored) { }
+            }
+        }
+        return lines;
+    }
+
+    private void sendInvoiceOcrResult(boolean success, String text, String error,
+                                      Text recognitionResult) {
         try {
             JSONObject payload = new JSONObject();
             payload.put("success", success);
             payload.put("text", text == null ? "" : text);
             payload.put("error", error == null ? "" : error);
+            payload.put("lines", positionedOcrLines(recognitionResult));
             String argument = payload.toString();
             runOnUiThread(() -> {
                 if (webView != null) {
@@ -954,7 +985,7 @@ public class MainActivity extends Activity {
                 InputImage image = InputImage.fromBitmap(bitmap, 0);
                 recognizer.process(image)
                         .addOnSuccessListener(result ->
-                                sendInvoiceOcrResult(true, result.getText(), ""))
+                                sendInvoiceOcrResult(true, result.getText(), "", result))
                         .addOnFailureListener(error ->
                                 sendInvoiceOcrResult(false, "", "Fotoğraf okunamadı. Daha net bir görüntü deneyin."))
                         .addOnCompleteListener(task -> {
@@ -1017,7 +1048,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.8.0";
+                return "0.9.0";
             }
         }
 
