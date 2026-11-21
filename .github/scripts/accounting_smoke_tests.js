@@ -219,4 +219,17 @@ assert.equal(expr("typeof submitPin"),"function");
 assert.equal(expr("typeof submitRegistration"),"function");
 assert.equal(expr("typeof loginLegacyAccount"),"function");
 
+// Confidential accounting data must be cleared when a session is locked.
+expr("db.transactions.push({id:889922,companyId:db.activeCompanyId,date:'2026-11-21',amount:250,type:'income'})");
+expr("pendingOcr={text:'Private customer invoice'}");
+expr("pendingBank={filename:'Private bank statement.csv'}");
+expr("rememberDurableDB()");
+expr("lockApp()");
+assert.equal(expr("unlocked"),false,"Locked app retained an unlocked JS session");
+assert.equal(expr("db.transactions.length"),0,"Locked app retained decrypted transactions");
+assert.equal(expr("lastDurableDbSnapshot"),null,"Locked app retained a plaintext accounting snapshot");
+assert.equal(expr("pendingOcr"),null,"Locked app retained OCR data");
+assert.equal(expr("pendingBank"),null,"Locked app retained imported bank details");
+console.log("PASS: account session lock wipes decrypted financial data and temporary bank/OCR caches");
+
 console.log("PASS: accounting, bank, XML, username/Hotmail/phone login, password hashing checks, migration and single APK policy");
