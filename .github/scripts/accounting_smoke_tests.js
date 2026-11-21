@@ -55,10 +55,10 @@ const expr=code=>vm.runInContext(code,ctx,{timeout:20000});
 const builtInActions=new Set(["confirm","prompt","alert","parseInt","parseFloat",
   "Number","String","Boolean","Date","Math","setTimeout","clearTimeout","isNaN"]);
 const unknownActions=new Set();
-const inlineActions=[...html.matchAll(/\\b(?:onclick|onsubmit|onchange|oninput)\\s*=\\s*"([^"]+)"/g)];
+const inlineActions=[...html.matchAll(/\b(?:onclick|onsubmit|onchange|oninput)\s*=\s*"([^"]+)"/g)];
 for(const attr of inlineActions){
   const handler=attr[1];
-  for(const hit of handler.matchAll(/(?:^|[^\\w.$])([A-Za-z_$][\\w$]*)\\s*\\(/g)){
+  for(const hit of handler.matchAll(/(?:^|[^\w.$])([A-Za-z_$][\w$]*)\s*\(/g)){
     const name=hit[1];
     if(builtInActions.has(name))continue;
     if(expr("typeof "+name)!=="function")unknownActions.add(name+" in "+handler);
