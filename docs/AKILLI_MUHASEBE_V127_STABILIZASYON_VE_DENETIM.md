@@ -109,3 +109,23 @@ Anahtarları, parolaları, tam anahtar dosyalarını, mükellef bilgilerini ve k
 ## Gelecekte istenecek PDF raporuna kaynak
 
 Bu belge, daha sonra hazırlanacak PDF için temel denetim metnidir. PDF'nin hazırlanacağı tarihte GitHub'daki en son commit, test/derleme sonuçları, yapılan/yapılmayan işler, eksik yetkiler ve APK imzalama durumu yeniden doğrulanmalıdır.
+
+
+## İkinci stabilizasyon paketi — 21 Kasım 2026
+
+- Uygulama kilitlendiğinde cihazda açık oturum için çözülmüş muhasebe verileri, son sağlam veritabanı anlık görüntüsü, bekleyen OCR metni ve banka ekstresi geçici belleği temizlenir. Şifreli disk kayıtlarına dokunulmaz.
+- Yerel işlem geçmişi kullanıcı adı, şirket kimliği, işlem tipi ve tarih bilgisini içerir. Yeni kayıt oluşturma/silme; stok, banka ekstresi, eşleştirme, irsaliye ve belge işlemleri yerel işlem geçmişine işlenir. Bu **değiştirilemez resmî denetim izi değildir**; şifreli muhasebe veritabanının parçasıdır.
+- Şirket değiştirme işleminde geçersiz şirket kimliği reddedilir. Yeni şirket seçimi diske doğrulanmadan eski firmanın banka/OCR taslakları silinmez. Başarılı seçimden sonra geçici taslaklar temizlenir.
+- Android `saveData` ve yedek geri yükleme akışı, `companies` ve `transactions` dizisi içermeyen hatalı JSON'u finansal verilerin üzerine yazmayı reddeder.
+- Aynı cihazdaki yerel hesapların hâlen tüm şirket verilerini okuyup değiştirebildiği hem kayıt ekranında hem ayarlarda açıklanır. Rol bazlı izin yönetimi uygulanana dek güvenli birer yetkili kullanıcı gibi kabul edilmelidir.
+- Giriş ekranı, muhasebe CRUD, banka aktarımı, OCR/irsaliye, stok ve firma değiştirme için ek regresyon testleri eklenmiştir.
+- **Kod inceleme:** Taslak pull request https://github.com/tugunal/tugunal/pull/1
+- Üretim dalına otomatik birleştirme ve kalıcı imzası doğrulanmamış APK dağıtımı yapılmadı.
+
+### Yayım öncesi kalan kritik kontroller
+
+1. Son taslak PR GitHub Actions `build` testlerinin başarılı sonuçlandığının doğrulanması.
+2. Bilinen v1.2.6 APK'nın mevcut şifreli finansal verileri yedeklemesi; ardından yetkili, kalıcı anahtarla imzalanmış yeni sürümle **aynı paket** yükseltme ve restore testi.
+3. En az iki fiziksel Android cihazda kamera, OCR, XML, CSV, Excel, şirket değiştirme, yanlış parola/işlem kilidi, veri kurtarma ve yeni kullanıcı testleri.
+4. Çok kullanıcılı mükellef verileri için firma bazlı yetki kontrolünün hem arayüzde hem Android saklama katmanında tamamlanması.
+5. GİB/SGK/banka resmî servisleri için ayrı yetki ve mevzuat doğrulaması.
