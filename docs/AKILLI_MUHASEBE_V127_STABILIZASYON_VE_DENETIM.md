@@ -27,6 +27,15 @@
 - **Şifreli veritabanı bozulması:** Doğrulanmış kullanıcı için kurtarma ekranı açılır; kayıtların üzerine otomatik boş veritabanı yazılmaz.
 - **Regresyon testi:** Yeni ve eski hesap, farklı e-posta/telefon biçimleri, yanlış şifre, başarısız profil yazımı, başarısız kullanıcı kaydı, eski PIN geçişi ve şifreli veri kurtarma senaryoları eklenmiştir.
 
+## Kontrol ve kanıt — 21 Kasım 2026
+
+- Kullanıcı tarafından sağlanan v1.2.6 APK SHA-256: `31f7874a0a290c2938fda27bfd1c000e605cb4901e674713b8da57be04f474a8`.
+- APK sertifikası SHA-256: `2361a76413916f19f0a0ccf5530a0d5213b88c2c2600cf598b49239d7d37adf5`; kalıcı imza kontrol standardıyla eşleşiyor.
+- APK ZIP bütünlük taraması: **Başarılı**. Java apksigner sertifika bilgisi okundu.
+- Stabilizasyon CI çalışması `44931499320`: **Başarılı**; Android release derlemesi, Node muhasebe/giriş/belge ayrıştırma testleri ve tek-paket sürüm politikası geçti.
+- Bu CI çalışması kalıcı GitHub imza sırları olmadığı için **imzasız** bir derleme girdisi oluşturmuştur. Bu dosya telefona kurulacak bir v1.2.7 sürümü değildir.
+- Android fiziksel cihaz kullanımı ve resmî muhasebe sistemi entegrasyonları bu statik/CI doğrulamasının dışında kalır.
+
 ## Kontrol edilen mevcut modüller ve sınırlar
 
 | Alan | Mevcut temel işlev | Resmî entegrasyon |
