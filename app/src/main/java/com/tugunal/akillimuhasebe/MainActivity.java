@@ -1186,7 +1186,13 @@ public class MainActivity extends Activity {
             if (!nativeUnlocked) return "error_locked";
             if (dataReadFailed) return "error_locked";
             try {
-                String encrypted = encryptLocalData(json == null ? "{}" : json);
+                // Refuse malformed or empty payloads before touching existing encrypted data.
+                if (json == null || json.trim().isEmpty()) return "error_format";
+                JSONObject parsed = new JSONObject(json);
+                if (parsed.optJSONArray("companies") == null ||
+                        parsed.optJSONArray("transactions") == null)
+                    return "error_format";
+                String encrypted = encryptLocalData(json);
                 boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         .putString("encrypted_db", encrypted).commit();
                 if (saved) pendingLocalRegistrationUsername = "";
@@ -1202,7 +1208,8 @@ public class MainActivity extends Activity {
             // Called only after user consciously selects and decrypts a backup.
             try {
                 JSONObject parsed = new JSONObject(json);
-                if (!parsed.has("companies") || !parsed.has("transactions"))
+                if (parsed.optJSONArray("companies") == null ||
+                        parsed.optJSONArray("transactions") == null)
                     return "error_format";
                 String encrypted = encryptLocalData(json);
                 boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
