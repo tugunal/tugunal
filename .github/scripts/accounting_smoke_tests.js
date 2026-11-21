@@ -61,6 +61,21 @@ assert.ok(native.messages.some(s=>s.includes("Son doğrulanmış kayıtlar geri 
   "Failed accounting save must warn the user");
 const activeId=expr("db.activeCompanyId");
 assert.ok(activeId);
+// Switching firms must not discard OCR/bank previews if the encrypted write fails.
+const secondId=expr("newRecordId()");
+expr("db.companies.push({id:"+secondId+",name:'Independent Test Company'})");
+assert.equal(expr("persist()"),true);
+expr("pendingOcr={text:'Draft invoice in current firm'};pendingBank={filename:'uncommitted-bank.csv'}");
+native.failNextSave=true;
+assert.equal(expr("switchCompany("+secondId+")"),false,"Company switch claimed success after failed save");
+assert.equal(expr("db.activeCompanyId"),activeId,"Failed company switch changed the selected company");
+assert.ok(expr("pendingOcr")&&expr("pendingBank"),"Failed switch discarded unsaved previews");
+assert.equal(expr("switchCompany("+secondId+")"),true,"Valid company switch failed");
+assert.equal(expr("db.activeCompanyId"),secondId);
+assert.equal(expr("pendingOcr"),null,"Successful switch kept previous firm's OCR preview");
+assert.equal(expr("pendingBank"),null,"Successful switch kept previous firm's bank preview");
+assert.equal(expr("switchCompany("+activeId+")"),true,"Return to original firm failed");
+assert.equal(expr("switchCompany(-12345)"),false,"Unknown firm must never be selected");
 assert.equal(expr("Array.isArray(scoped('products'))"),true);
 assert.equal(expr("Array.isArray(scoped('stockMovements'))"),true);
 assert.equal(expr("Array.isArray(scoped('activityLog'))"),true);
