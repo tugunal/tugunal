@@ -34,8 +34,8 @@ function saveStockProduct(event){
     unit:unit.slice(0,24),openingQuantity:opening,unitPrice:price,createdAt:new Date().toISOString()};
   db.products.unshift(p);
   stockLog("stok_urun",name+" ürün kartı oluşturuldu.",p.id);
+  if(!persist())return false;
   $("stockProductForm").reset();
-  persist();
   NativeStore.showMessage("Ürün kartı kaydedildi.");
   return false;
 }
@@ -59,8 +59,8 @@ function recordStockMovement(event){
     sourceType:"manual",sourceId:0};
   db.stockMovements.unshift(move);
   stockLog("stok_hareketi",product.name+" için "+quantity+" "+product.unit+" hareket.",move.id);
+  if(!persist())return false;
   $("stockMoveForm").reset();
-  persist();
   NativeStore.showMessage("Stok hareketi kaydedildi.");
   return false;
 }
@@ -95,7 +95,7 @@ function applyDeliveryStock(){
   db.stockMovements.unshift(...moves);
   doc.stockApplied={direction:operation,at:new Date().toISOString(),movementIds:moves.map(x=>x.id)};
   stockLog("irsaliye_stok",(doc.number||"Numarasız")+" irsaliye "+moves.length+" stok satırına aktarıldı.",doc.id);
-  persist();
+  if(!persist())return;
   NativeStore.showMessage("İrsaliye stoka aktarıldı. Mali fiş oluşturulmadı.");
 }
 function renderInventory(){
