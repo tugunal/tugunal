@@ -212,3 +212,20 @@ Ayarlar -> Sifreli Yedek -> Yeni Uygulamaya Yedekten Geri Yukle
 akisiyla tasinabilir. Eski uygulama kurulu olarak kalabilir.
 Yeni kurulum basarisizsa telefondaki tam hata mesaji / Android surumu
 incelenmelidir. Fiziksel cihazda test yapilmadan uyumluluk garanti edilemez.
+
+
+## v1.2.0 – Kararlı yerel çalışma sürümü
+
+UBL-TR XML okuma, belge satırı ayrıştırma ve kontrol, beş ayrı CSV aktarımı,
+PIN değişikliği ve Android üzerinde şifreli kayda PIN doğrulaması, fiş dengesi,
+kuruş duyarlılığında faturalar ve mükerrer banka eşleştirme önlemleri eklendi.
+
+Aynı kalıcı imza anahtarıyla imzalanacak iki APK vardır:
+`.stable` mevcut kalıcı sürümü, `.kurulum` ise v1.0.1 Yeni Kurulum sürümünü
+günceller. GitHub Releases kaydı oluşturulduğunda in-app updater kendisiyle
+aynı paket kimliğine sahip APK'yı seçer.
+
+Bu yerel muhasebe uygulaması GİB veya SGK resmî gönderimi, canlı banka hesap
+API bağlantısı, yasal bordro veya e-Defter tasdik işlevi içermez. Bu
+bağlantıların tamamlanması için kullanıcı hesabı, resmî servis izinleri,
+güncel mevzuat kontrolleri ve fiziksel cihaz denemeleri gereklidir.

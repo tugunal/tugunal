@@ -79,6 +79,7 @@ public class MainActivity extends Activity {
     private File pendingInstallFile;
     private boolean embeddedCameraActive = false;
     private volatile boolean dataReadFailed = false;
+    private volatile boolean nativeUnlocked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,22 +130,28 @@ public class MainActivity extends Activity {
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 String[] acceptTypes = params.getAcceptTypes();
-                boolean imageRequest = false, pdfRequest = false, bankRequest = false;
+                boolean imageRequest = false, pdfRequest = false, bankRequest = false, xmlRequest = false;
                 if (acceptTypes != null) {
                     for (String acceptType : acceptTypes) {
                         if (acceptType == null) continue;
                         String accept = acceptType.toLowerCase(Locale.ROOT);
                         if (accept.contains("image")) imageRequest = true;
                         if (accept.contains("pdf")) pdfRequest = true;
+                        if (accept.contains("xml")) xmlRequest = true;
                         if (accept.contains("csv") || accept.contains("spreadsheet")
                                 || accept.contains("excel") || accept.contains("xlsx")
                                 || accept.contains(".txt")) bankRequest = true;
                     }
                 }
-                if (imageRequest && !pdfRequest && !bankRequest) {
+                if (imageRequest && !pdfRequest && !bankRequest && !xmlRequest) {
                     intent.setType("image/*");
-                } else if (pdfRequest && !bankRequest) {
+                } else if (pdfRequest && !bankRequest && !xmlRequest) {
                     intent.setType("application/pdf");
+                } else if (xmlRequest && !bankRequest) {
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                            "application/xml", "text/xml", "application/octet-stream"
+                    });
                 } else if (bankRequest) {
                     intent.setType("*/*");
                     intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
@@ -224,6 +231,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (webView != null && !embeddedCameraActive && pausedAt > 0L
                 && System.currentTimeMillis() - pausedAt > 30000L) {
+            nativeUnlocked = false;
             webView.postDelayed(() ->
                     webView.evaluateJavascript("if(window.lockApp){window.lockApp();}", null), 250);
         }
@@ -630,8 +638,11 @@ public class MainActivity extends Activity {
                     JSONObject asset = assets.optJSONObject(i);
                     if (asset == null) continue;
                     String name = asset.optString("name", "");
+                    boolean separateInstall = getPackageName().endsWith(".kurulum");
+                    boolean rightPackage = separateInstall ? name.endsWith("-KURULUM.apk")
+                                                           : !name.endsWith("-KURULUM.apk");
                     if (name.toLowerCase(Locale.ROOT).endsWith(".apk")
-                            && name.startsWith("AkilliMuhasebe-")) {
+                            && name.startsWith("AkilliMuhasebe-") && rightPackage) {
                         downloadUrl = asset.optString("browser_download_url", "");
                         digest = asset.optString("digest", "");
                         break;
@@ -850,13 +861,15 @@ public class MainActivity extends Activity {
         public String setPin(String pin) {
             try {
                 if (pin == null || pin.length() < 6 || pin.length() > 32) return "invalid";
+                if (getSharedPreferences(PREFS, MODE_PRIVATE).contains("pin_hash")) return "already_set";
                 byte[] salt = new byte[16];
                 new SecureRandom().nextBytes(salt);
                 byte[] hash = derivePinHash(pin, salt);
                 SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
                 editor.putString("pin_salt", Base64.getEncoder().encodeToString(salt));
                 editor.putString("pin_hash", Base64.getEncoder().encodeToString(hash));
-                editor.apply();
+                if (!editor.commit()) return "error";
+                nativeUnlocked = true;
                 return "ok";
             } catch (Exception ex) {
                 return "error";
@@ -873,7 +886,8 @@ public class MainActivity extends Activity {
                 byte[] salt = Base64.getDecoder().decode(saltText);
                 byte[] expected = Base64.getDecoder().decode(hashText);
                 byte[] actual = derivePinHash(pin, salt);
-                return MessageDigest.isEqual(expected, actual) ? "true" : "false";
+                nativeUnlocked = MessageDigest.isEqual(expected, actual);
+                return nativeUnlocked ? "true" : "false";
             } catch (Exception ex) {
                 return "false";
             }
@@ -881,6 +895,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String loadData() {
+            if (!nativeUnlocked) return "__AUTH_REQUIRED__";
             String encrypted = getSharedPreferences(PREFS, MODE_PRIVATE).getString("encrypted_db", "");
             if (encrypted.isEmpty()) {
                 dataReadFailed = false;
@@ -899,6 +914,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String saveData(String json) {
+            if (!nativeUnlocked) return "error_locked";
             if (dataReadFailed) return "error_locked";
             try {
                 String encrypted = encryptLocalData(json == null ? "{}" : json);
@@ -912,6 +928,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String saveRestoredData(String json) {
+            if (!nativeUnlocked) return "error_locked";
             // Called only after user consciously selects and decrypts a backup.
             try {
                 JSONObject parsed = new JSONObject(json);
@@ -929,6 +946,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String saveBackup(String json, String password) {
+            if (!nativeUnlocked) return "error_locked";
             try {
                 String encrypted = encryptBackup(json == null ? "{}" : json, password);
                 return saveBackupFile(encrypted) ? "ok" : "error";
@@ -939,6 +957,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String decryptBackup(String envelope, String password) {
+            if (!nativeUnlocked) return "ERROR";
             try {
                 return MainActivity.this.decryptBackupEnvelope(envelope, password);
             } catch (Exception ex) {
@@ -948,6 +967,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void openInvoiceCamera() {
+            if (!nativeUnlocked) return;
             runOnUiThread(() -> {
                 if (embeddedCameraActive) return;
                 try {
@@ -1022,6 +1042,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public String saveCsvExport(String filename, String data) {
+            if (!nativeUnlocked) return "error_locked";
             return saveExportFile(filename, "text/csv", data) ? "ok" : "error";
         }
 
@@ -1044,11 +1065,39 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void lockNative() { nativeUnlocked = false; }
+
+        @JavascriptInterface
+        public String changePin(String oldPin, String newPin) {
+            if (!nativeUnlocked || oldPin == null || newPin == null ||
+                    newPin.length() < 6 || newPin.length() > 32) return "error";
+            try {
+                SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+                String saltText = prefs.getString("pin_salt", "");
+                String hashText = prefs.getString("pin_hash", "");
+                if (saltText.isEmpty() || hashText.isEmpty()) return "error";
+                byte[] expected = Base64.getDecoder().decode(hashText);
+                byte[] salt = Base64.getDecoder().decode(saltText);
+                if (!MessageDigest.isEqual(expected, derivePinHash(oldPin, salt))) return "invalid_old";
+                byte[] newSalt = new byte[16];
+                new SecureRandom().nextBytes(newSalt);
+                byte[] hashed = derivePinHash(newPin, newSalt);
+                boolean ok = prefs.edit()
+                        .putString("pin_salt", Base64.getEncoder().encodeToString(newSalt))
+                        .putString("pin_hash", Base64.getEncoder().encodeToString(hashed))
+                        .commit();
+                return ok ? "ok" : "error";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        @JavascriptInterface
         public String getAppVersion() {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "1.0.1";
+                return "1.2.0";
             }
         }
 

@@ -19,7 +19,12 @@ function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.
 function handleBack(){if(!$('modal').classList.contains('hidden'))closeForm();else if(!$('lock').classList.contains('hidden')){}else showView('dashboard')}
 function accountOptions(){return scoped('accounts').map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')}
 function employeeOptions(){return scoped('employees').map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')}
-function field(name,label,type='text',placeholder=''){return '<div class="field"><label>'+label+'</label><input name="'+name+'" type="'+type+'" placeholder="'+placeholder+'" '+(type==='number'?'step="0.01"':'')+'></div>'}
+function field(name,label,type='text',placeholder=''){
+ const numeric=type==='number';
+ const outputType=numeric?'text':type;
+ return '<div class="field"><label>'+label+'</label><input name="'+name+'" type="'+outputType+'" placeholder="'+placeholder+'" '+
+   (numeric?'inputmode="decimal" data-number="1" autocomplete="off"':'')+'></div>';
+}
 function selectField(name,label,options){return '<div class="field"><label>'+label+'</label><select name="'+name+'">'+options+'</select></div>'}
 function openForm(kind,defaultType){formKind=kind;let f='';
 if(kind==='company'){f='<div class="formgrid">'+field('name','Firma / mükellef adı')+selectField('type','İşletme türü','<option value="sole">Şahıs işletmesi</option><option value="limited">Limited şirket</option><option value="joint">Anonim şirket</option><option value="other">Diğer</option>')+field('taxOffice','Vergi dairesi')+field('taxNo','Vergi numarası / TCKN')+field('phone','Telefon','tel')+field('email','E-posta','email')+field('fiscalYear','Mali yıl','number',String(new Date().getFullYear()))+field('address','Adres')+'</div>'}
@@ -37,7 +42,17 @@ if(kind==='instrument'){f='<div class="formgrid">'+selectField('type','Belge tü
 $('formTitle').textContent=({company:'Mükellef / firma ekle',transaction:'Gelir / gider kaydı',customer:'Cari hesap ekle',invoice:'Fatura kaydı',employee:'Personel kaydı',payroll:'Bordro ön hesabı',account:'Kasa / banka hesabı',asset:'Demirbaş / varlık kaydı',reminder:'Hatırlatma ekle',settlement:'Tahsilat / ödeme kaydı',voucher:'Muhasebe fişi',instrument:'Çek / senet kaydı'})[kind]||'Yeni kayıt';
 $('formBody').innerHTML=f+'<button class="btn" style="width:100%;margin-top:10px" onclick="saveForm()">Kaydet</button>';$('formBody').querySelectorAll('input[type=date]').forEach(x=>x.value=dateToday());$('formBody').querySelectorAll('input[type=month]').forEach(x=>x.value=dateToday().slice(0,7));if(kind==='invoice'&&pendingOcr){const values={number:pendingOcr.number,party:pendingOcr.party,taxNo:pendingOcr.taxNo,date:pendingOcr.date,net:pendingOcr.net,vatRate:pendingOcr.vatRate};Object.entries(values).forEach(([key,value])=>{const input=$('formBody').querySelector('[name="'+key+'"]');if(input&&value!==''&&value!==null&&value!==undefined)input.value=value;});}if(kind==='invoice'){const customerSelect=$('formBody').querySelector('[name="customerId"]');if(customerSelect)customerSelect.addEventListener('change',()=>{const c=scoped('customers').find(x=>Number(x.id)===Number(customerSelect.value));const party=$('formBody').querySelector('[name="party"]');if(c&&party)party.value=c.name;});} $('modal').classList.remove('hidden')}
 function closeForm(){$('modal').classList.add('hidden')}
-function readForm(){const o={};$('formBody').querySelectorAll('input,select').forEach(x=>o[x.name]=x.value);return o}
+function readForm(){
+ const values={};
+ $('formBody').querySelectorAll('input,select').forEach(x=>{
+   if(!x.name)return;
+   if(x.dataset.number&&x.value.trim()!==''){
+     const n=DocumentParser.number(x.value.trim());
+     values[x.name]=Number.isFinite(n)?String(n):x.value;
+   }else values[x.name]=x.value;
+ });
+ return values;
+}
 let pendingOcr=null,pendingOcrSourceDocumentId=0,editingDocumentId=0;
 function takePhotoInApp(){
   if(!unlocked)return NativeStore.showMessage('Önce şifre ile giriş yapın.');
@@ -81,6 +96,10 @@ function useOcrInvoice(){
   const reviewed=readReviewedDocument();
   if(!['einvoice','invoice'].includes(reviewed.documentType)){NativeStore.showMessage('İrsaliye, POS slipi veya fiş faturaya otomatik dönüştürülemez. Önce belge türünü kontrol edin.');return;}
   if(!reviewed.party||reviewed.total<=0)return NativeStore.showMessage('Firma adı ve toplam tutarı kontrol et.');
+  const rates=new Set((reviewed.items||[]).map(i=>i.vatRate).filter(x=>x!==null&&x!==undefined&&x!=='').map(Number));
+  if(rates.size>1)return NativeStore.showMessage('Birden fazla KDV oranı var. Belgeyi arşive kaydet; tek oranlı fatura taslağına otomatik aktarma güvenli değil.');
+  if(reviewed.net!==null&&reviewed.vat!==null&&Math.abs(AccountingRules.round(reviewed.net+reviewed.vat)-reviewed.total)>0.06)
+    return NativeStore.showMessage('Matrah + KDV ve genel toplam uyuşmuyor; faturayı kontrol edin.');
   pendingOcr={...reviewed,text:pendingOcr.text,sourceDocumentId:pendingOcrSourceDocumentId};
   openForm('invoice');
 }

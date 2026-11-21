@@ -6,7 +6,7 @@ const root="app/src/main/assets/";
 const html=fs.readFileSync(root+"index.html","utf8");
 const sources=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(sources,[
-  "document_parser.js","js/accounting_rules.js","js/app_model.js","js/app_main.js",
+  "document_parser.js","ubl_parser.js","js/accounting_rules.js","js/app_model.js","js/app_main.js",
   "js/app_records.js","js/app_reports.js","js/app_bank.js","js/app_documents.js",
   "js/app_stock.js","js/workspace.js","js/app_init.js"
 ],"scripts must load in dependency order");
@@ -33,7 +33,7 @@ function element(id){
 }
 const fakeWindow={addEventListener(){},scrollTo(){}};
 const native={
-  saved:[],messages:[],hasPin:()=>"true",getAppVersion:()=>"1.0.0",
+  saved:[],messages:[],hasPin:()=>"true",getAppVersion:()=>"1.2.0",
   showMessage(s){this.messages.push(String(s))},saveData(json){this.saved.push(JSON.parse(json));return"ok"},
   loadData(){return"{}"},verifyPin(){return"true"},setPin(){return"ok"},
   checkForUpdate(){},saveCsvExport(){return"ok"},
@@ -108,4 +108,29 @@ assert.ok(fs.existsSync(root+"css/workspace.css"),"style file missing");
 assert.ok(fs.readFileSync(root+"css/workspace.css","utf8").includes("@media(min-width:1050px)"),"desktop sidebar rules missing");
 assert.ok(sources.some(x=>x==="js/app_documents.js"),"document module missing");
 
-console.log("PASS: all modular scripts, screen linkage, voucher balance, invoice dedup, bank matching, inventory, delivery-note posting and multi-company isolation");
+
+assert.ok(html.includes('id="ublInvoice"'),"UBL XML chooser missing");
+assert.ok(html.includes('handleUblFile(event)'),"UBL read handler missing");
+assert.ok(html.includes('changeSecurityPin()'),"PIN change UI missing");
+const nativeSource=fs.readFileSync('app/src/main/java/com/tugunal/akillimuhasebe/MainActivity.java','utf8');
+assert.ok(nativeSource.includes('nativeUnlocked = MessageDigest.isEqual(expected, actual)'),"native PIN verifier missing");
+assert.ok(nativeSource.includes('if (!nativeUnlocked) return "__AUTH_REQUIRED__"'),"native read auth missing");
+assert.ok(nativeSource.includes('if (!nativeUnlocked) return "error_locked"'),"native save auth missing");
+assert.ok(nativeSource.includes('public String changePin('),"PIN change native missing");
+assert.ok(nativeSource.includes('boolean separateInstall = getPackageName().endsWith(".kurulum")'),"update package selection missing");
+const xmlSource=fs.readFileSync(root+'ubl_parser.js','utf8');
+assert.ok(xmlSource.includes('UBL-TR') && xmlSource.includes('DOMParser'),"UBL reader not loaded");
+assert.ok(!/fetch\s*\(|XMLHttpRequest/.test(xmlSource),"UBL parsing must be offline");
+assert.equal(expr("typeof UBLParser.parseInvoice"),"function");
+assert.ok(expr("(()=>{try{UBLParser.parseInvoice('<!DOCTYPE z [<!ENTITY x SYSTEM \"file:///etc/passwd\">]><Invoice/>');return false;}catch(e){return true}})()"),"XXE parser guard failed");
+const extra=expr("(()=>{const c=newRecordId();db.companies.push({id:c,name:'Test Separate Business'});db=normalizeDB(db);return {id:c,cash:db.accounts.filter(a=>a.companyId===c&&a.kind==='cash').length,bank:db.accounts.filter(a=>a.companyId===c&&a.kind==='bank').length}})()");
+assert.equal(extra.cash,1,"separate company's cash account missing");
+assert.equal(extra.bank,1,"separate company's bank account missing");
+assert.equal(expr("AccountingRules.round(123.456)"),123.46);
+assert.equal(expr("typeof exportInvoicesCsv"),"function");
+assert.equal(expr("typeof exportDocumentsCsv"),"function");
+assert.equal(expr("typeof exportBankCsv"),"function");
+assert.equal(expr("typeof exportStockCsv"),"function");
+assert.equal(expr("typeof changeSecurityPin"),"function");
+
+console.log("PASS: modular flows, offline UBL, security, PIN change, XML input, CSV exports, vouchers, bank matching, inventory and multi-company isolation");

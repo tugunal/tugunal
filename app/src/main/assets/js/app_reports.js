@@ -20,6 +20,28 @@ function restoreBackup(e){const file=e.target.files[0];if(!file)return;const rea
 function csvValue(value){const s=String(value??'');const safe=/^[=+@\t\r]/.test(s.trimStart())||(s.trimStart().startsWith('-')&&!/^-?\d+(?:[.,]\d+)?$/.test(s.trim()));return '"'+(safe?"'":'')+s.replace(/"/g,'""')+'"';}
 function saveCsvRows(name,header,rows){const csv='\ufeff'+[header,...rows].map(row=>row.map(csvValue).join(';')).join('\r\n');const result=NativeStore.saveCsvExport(name,csv);if(result!=='ok')NativeStore.showMessage('CSV oluşturulamadı.');}
 function exportCsv(){const rows=scoped('transactions').map(x=>[x.date,x.type==='income'?'Gelir':'Gider',x.description,x.amount,x.category,x.party]);saveCsvRows('AkilliMuhasebe_Hareketler.csv',['Tarih','Tür','Açıklama','Tutar','Kategori','İlgili kişi'],rows)}
+
+function exportInvoicesCsv(){
+ const rows=scoped('invoices').map(x=>[x.date,x.number,x.party,x.taxNo,x.type,x.net,x.vatRate,x.vat,x.total,x.paidAmount,invoiceRemaining(x),x.dueDate,x.status]);
+ saveCsvRows('AkilliMuhasebe_Faturalar.csv',['Tarih','Fatura No','Cari','VKN/TCKN','Tur','Matrah','KDV Orani','KDV','Toplam','Odenen','Kalan','Vade','Durum'],rows);
+}
+function exportDocumentsCsv(){
+ const rows=[];
+ for(const d of scoped('documents')){
+   if(!d.items?.length)rows.push([d.documentType,d.date,d.number,d.party,d.taxNo,d.total,'','','','','','']);
+   else for(const item of d.items)rows.push([d.documentType,d.date,d.number,d.party,d.taxNo,d.total,item.code,item.name,item.quantity,item.unit,item.unitPrice,item.amount]);
+ }
+ saveCsvRows('AkilliMuhasebe_Belgeler.csv',['Tur','Tarih','Belge No','Firma','VKN/TCKN','Belge Toplam','Urun Kodu','Urun Adi','Miktar','Birim','Birim Fiyat','Satir Toplam'],rows);
+}
+function exportStockCsv(){
+ const rows=scoped('products').map(p=>[p.code,p.name,p.unit,p.openingQuantity,stockOnHand(p),p.unitPrice]);
+ saveCsvRows('AkilliMuhasebe_Stok.csv',['Kod','Urun','Birim','Acilis','Mevcut','Girilen Birim Maliyet'],rows);
+}
+function exportBankCsv(){
+ const rows=scoped('bankRows').map(r=>[r.fileName,r.date,r.description,r.reference,r.amount,r.status,r.matchedTxId]);
+ saveCsvRows('AkilliMuhasebe_Banka.csv',['Dosya','Tarih','Aciklama','Referans','Tutar','Eslesme','Hareket ID'],rows);
+}
+
 window.addEventListener('error',e=>{try{NativeStore.showMessage('Uygulama hatası: '+String(e.message||'bilinmeyen hata').slice(0,90))}catch(_){}});
 
 /* ----- Local bank statement import, provisional matching and rule-based audits ----- */

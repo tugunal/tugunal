@@ -78,6 +78,7 @@ function prepareBankRows(){
   $('bankPreview').classList.remove('hidden');
 }
 function importBankRows(){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda aktarım yapılamaz.');
   if(!pendingBank||!pendingBank.prepared.length)return NativeStore.showMessage('Önce geçerli satırları incele.');
   if(!confirm(pendingBank.prepared.length+' banka hareketi aktarılacak. Bu işlem kasa bakiyesini otomatik değiştirmez. Onaylıyor musun?'))return;
   const existing=new Set(scoped('bankRows').map(r=>r.key)),companyId=db.activeCompanyId;
@@ -102,6 +103,7 @@ function bankSuggestedTransaction(bankRow,used){
   return matches.length===1?matches[0]:null;
 }
 function suggestBankMatches(){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
   const alreadyUsed=new Set(scoped('bankRows').filter(r=>r.status==='matched').map(r=>Number(r.matchedTxId)));
   let suggested=0,unresolved=0;
   for(const row of scoped('bankRows')){
@@ -113,14 +115,21 @@ function suggestBankMatches(){
   persist();NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
 }
 function approveBankMatch(id){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
   const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));
   if(!row||row.status!=='suggested')return;
   const tx=scoped('transactions').find(t=>Number(t.id)===Number(row.suggestedTxId));
   if(!tx)return NativeStore.showMessage('Önerilen muhasebe kaydı bulunamadı.');
+  if(scoped('bankRows').some(r=>r.status==='matched'&&Number(r.matchedTxId)===Number(tx.id)&&Number(r.id)!==Number(row.id)))
+    return NativeStore.showMessage('Bu muhasebe hareketi zaten başka bir banka satırıyla eşleşmiş.');
+  const sign=tx.type==='income'?1:-1;
+  if(Number(tx.accountId)!==Number(row.accountId)||Math.abs(sign*Number(tx.amount)-Number(row.amount))>0.01)
+    return NativeStore.showMessage('Banka tutarı veya hesabı değişmiş. Yeniden eşleştirme önerisi alın.');
   if(!confirm('Banka hareketi mevcut muhasebe kaydıyla eşleştirilsin mi?'))return;
   row.status='matched';row.matchedTxId=tx.id;row.suggestedTxId=0;persist();
 }
 function createBankTransaction(id){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
   const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));
   if(!row||row.status==='matched')return NativeStore.showMessage('Bu banka hareketi zaten eşleştirilmiş.');
   if(!confirm('Bu ekstre satırından YENİ gelir/gider kaydı ve muhasebe fişi TASLAĞI oluşturulsun mu? Önce başka kayıt olmadığını kontrol et.'))return;
@@ -133,6 +142,7 @@ function createBankTransaction(id){
   persist();
 }
 function changeBankRowStatus(id,status){
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
   const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));if(!row)return;
   if(status==='ignored'&&!confirm('Ekstre hareketi dikkate alınmasın mı?'))return;
   if(row.status==='matched'&&status==='unmatched'){

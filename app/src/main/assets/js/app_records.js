@@ -1,14 +1,16 @@
 /* Akilli Muhasebe 1.0 — app_records.js */
 function saveForm(){if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modu açık. Önce şifreli yedek geri yüklenmeli.');const d=readForm(),id=newRecordId();
-if(formKind==='company'){if(!d.name)return NativeStore.showMessage('Firma adı girin.');const company={...d,id,fiscalYear:d.fiscalYear||String(new Date().getFullYear())};db.companies.push(company);db.activeCompanyId=id;db.accounts.push({id:id+1,companyId:id,name:'Kasa',kind:'cash',opening:0},{id:id+2,companyId:id,name:'Banka',kind:'bank',opening:0});db.chartAccounts.push(...defaultChartFor(id));}
+if(formKind==='company'){if(!d.name)return NativeStore.showMessage('Firma adı girin.');const company={...d,id,fiscalYear:d.fiscalYear||String(new Date().getFullYear())};db.companies.push(company);db.activeCompanyId=id;db.accounts.push({id:newRecordId(),companyId:id,name:'Kasa',kind:'cash',opening:0},{id:newRecordId(),companyId:id,name:'Banka',kind:'bank',opening:0});db.chartAccounts.push(...defaultChartFor(id));}
 if(formKind==='transaction'){if(!d.description||Number(d.amount)<=0)return NativeStore.showMessage('Açıklama ve geçerli tutar girin.');const tx={...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),accountId:Number(d.accountId)||scoped('accounts')[0]?.id};db.transactions.unshift(tx);addTransactionVoucher(tx);}
 if(formKind==='customer'){if(!d.name)return NativeStore.showMessage('Ad veya firma adı girin.');db.customers.unshift({...d,id,companyId:db.activeCompanyId,openingReceivable:Number(d.openingReceivable)||0,openingPayable:Number(d.openingPayable)||0});}
 if(formKind==='invoice'){
  if(!d.party||Number(d.net)<=0)return NativeStore.showMessage('Firma ve tutar girin.');
  if(d.number&&scoped('invoices').some(i=>String(i.number||'').trim().toLocaleLowerCase('tr-TR')===String(d.number).trim().toLocaleLowerCase('tr-TR')&&String(i.party||'').trim().toLocaleLowerCase('tr-TR')===String(d.party).trim().toLocaleLowerCase('tr-TR')))
    return NativeStore.showMessage('Bu firma ve fatura numarası zaten kayıtlı.');
- const net=Number(d.net),rate=Math.max(0,Number(d.vatRate)||0),vat=net*rate/100,total=net+vat;
- let paid=Number(d.paidAmount)||0;if(d.status==='paid'&&paid===0)paid=total;if(paid<0||paid>total+0.01)return NativeStore.showMessage('Ödenen tutar fatura toplamını aşamaz.');
+ const net=AccountingRules.round(Number(d.net)),rate=Number(d.vatRate||0);
+ if(!Number.isFinite(rate)||rate<0||rate>100)return NativeStore.showMessage('KDV oranı geçersiz.');
+ const vat=AccountingRules.round(net*rate/100),total=AccountingRules.round(net+vat);
+ let paid=AccountingRules.round(Number(d.paidAmount)||0);if(d.status==='paid'&&paid===0)paid=total;if(paid<0||paid>total+0.01)return NativeStore.showMessage('Ödenen tutar fatura toplamını aşamaz.');
  if(d.status==='partial'&&paid<=0)return NativeStore.showMessage('Kısmi ödeme için ödenen tutarı girin.');
  if(paid>=total-0.01)d.status='paid';else if(paid>0)d.status='partial';else d.status='unpaid';
  let customer=scoped('customers').find(c=>Number(c.id)===Number(d.customerId))||scoped('customers').find(c=>String(c.name||'').trim().toLocaleLowerCase('tr-TR')===String(d.party||'').trim().toLocaleLowerCase('tr-TR'));
@@ -102,6 +104,17 @@ function showInvoiceItems(id){
   $('modal').classList.remove('hidden');
 }
 function accountBalance(a){const movements=scoped('transactions').filter(x=>Number(x.accountId)===Number(a.id));return Number(a.opening||0)+movements.reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0)}
-function setVoucherStatus(id,status){const v=scoped('vouchers').find(x=>Number(x.id)===Number(id));if(!v)return;v.status=status;persist()}
-function setInstrumentStatus(id,status){const x=scoped('instruments').find(i=>Number(i.id)===Number(id));if(!x)return;x.status=status;persist()}
+function setVoucherStatus(id,status){
+ if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda fiş değiştirilemez.');
+ const v=scoped('vouchers').find(x=>Number(x.id)===Number(id));if(!v)return;
+ if(status!=='draft'&&status!=='approved')return NativeStore.showMessage('Geçersiz fiş durumu.');
+ if(status==='approved'&&!AccountingRules.balanceVoucher(v).balanced)
+   return NativeStore.showMessage('Borç/alacak dengesi sağlanmadan fiş onaylanamaz.');
+ v.status=status;persist();
+}
+function setInstrumentStatus(id,status){
+ if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda değişiklik yapılamaz.');
+ if(!['pending','paid','endorsed','bounced','returned'].includes(status))return;
+ const x=scoped('instruments').find(i=>Number(i.id)===Number(id));if(!x)return;x.status=status;persist();
+}
 

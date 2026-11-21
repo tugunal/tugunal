@@ -178,7 +178,9 @@ jobs:
           tag_name: v${{ steps.version.outputs.value }}
           name: Akilli Muhasebe v${{ steps.version.outputs.value }}
           target_commitish: ${{ github.sha }}
-          files: dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
+          files: |
+            dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
+            dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}-KURULUM.apk
           make_latest: true
           draft: false
           prerelease: false

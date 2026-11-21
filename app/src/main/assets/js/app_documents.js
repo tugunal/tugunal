@@ -1,5 +1,30 @@
 /* Akilli Muhasebe 1.0 — app_documents.js */
 /* ---- Document capture: receipts, e-invoices, POS slips and delivery notes ---- */
+function handleUblFile(event){
+  const file=event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(!/\.xml$/i.test(file.name)||file.size>5*1024*1024)
+    return NativeStore.showMessage('En fazla 5 MB boyutunda UBL-TR XML faturası seçin.');
+  if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda belge içeri aktarılamaz.');
+  $('ocrPreview').classList.add('hidden');
+  $('ocrStatus').textContent='XML faturası cihazda okunuyor...';
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      pendingOcr=UBLParser.parseInvoice(String(reader.result||''));
+      editingDocumentId=0;pendingOcrSourceDocumentId=0;
+      pendingOcr.text=pendingOcr.rawText;
+      $('ocrText').textContent=String(reader.result||'').slice(0,30000);
+      renderOcrReview();
+      $('ocrStatus').textContent=pendingOcr.items.length+' mal/hizmet kalemi XML dosyasından okundu. Kontrol ederek kaydet.';
+      $('ocrPreview').classList.remove('hidden');
+    }catch(e){pendingOcr=null;$('ocrStatus').textContent='XML açılamadı: '+String(e.message||e);}
+  };
+  reader.onerror=()=>$('ocrStatus').textContent='XML dosyası okunamadı.';
+  reader.readAsText(file,'UTF-8');
+  event.target.value='';
+}
+
 function documentTypeName(type){
   return ({receipt:'Market / perakende fişi',einvoice:'e-Fatura / e-Arşiv',
     invoice:'Diğer fatura',delivery_note:'İrsaliye',pos:'POS slipi',
