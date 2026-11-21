@@ -14,7 +14,17 @@ window.onUpdateCheckResult=function(result){updateCheckBusy=false;if(!result||!r
 function installAvailableUpdate(){if(!availableUpdate||!availableUpdate.downloadUrl){NativeStore.showMessage('Önce güncelleme kontrolü yapın.');return;}if(!confirm('Akıllı Muhasebe v'+availableUpdate.latestVersion+' indirilsin mi? İndirme tamamlanınca Android kurulum ekranı açılacak.'))return;setUpdateButtons(false);setUpdateStatus('Yeni APK indiriliyor...');NativeStore.downloadAndInstallUpdate(availableUpdate.downloadUrl,availableUpdate.digest||'');}
 window.onUpdateDownloadProgress=function(p){if(!p)return;const pct=Number(p.percent)||0;setUpdateStatus('APK indiriliyor: %'+pct);};
 window.onUpdateDownloadResult=function(result){if(!result||!result.success){setUpdateStatus((result&&result.message)||'APK indirilemedi.');setUpdateButtons(!!availableUpdate);return;}setUpdateStatus(result.message||'APK indirildi. Android kurulum ekranı açılıyor.');};
-function lockApp(){unlocked=false;$('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent=''}
+function lockApp(){unlocked=false;try{NativeStore.lockNative();}catch(_){}$('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent=''}
+function changeSecurityPin(){
+ if(!unlocked||readOnlyRecovery)return NativeStore.showMessage('Önce PIN ile giriş yapın.');
+ const oldPin=prompt('Mevcut PIN kodunu girin:');if(!oldPin)return;
+ const newPin=prompt('Yeni PIN (6–32 karakter):');if(!newPin)return;
+ if(newPin.length<6||newPin.length>32)return NativeStore.showMessage('Yeni PIN 6–32 karakter olmalı.');
+ const verify=prompt('Yeni PIN kodunu yeniden girin:');
+ if(newPin!==verify)return NativeStore.showMessage('PIN kodları eşleşmedi.');
+ const result=NativeStore.changePin(oldPin,newPin);
+ NativeStore.showMessage(result==='ok'?'PIN kodu güncellendi.':result==='invalid_old'?'Eski PIN yanlış.':'PIN değiştirilemedi.');
+}
 function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===id));render()}
 function handleBack(){if(!$('modal').classList.contains('hidden'))closeForm();else if(!$('lock').classList.contains('hidden')){}else showView('dashboard')}
 function accountOptions(){return scoped('accounts').map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')}
