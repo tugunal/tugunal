@@ -85,11 +85,11 @@ function finishAuthenticatedSession(data,profile){
  data.settings.userProfile=profile;
  db=data;readOnlyRecovery=false;unlocked=true;
  migrateLegacyData();
+ const result=NativeStore.saveData(JSON.stringify(db));
+ if(result!=="ok")throw Error("Şifreli verilerin kaydı doğrulanamadı. Yedek alın.");
  $("lock").classList.add("hidden");
  $("pinInput").value="";$("regPin").value="";$("regPinConfirm").value="";
  $("regExistingPin").value="";
- const result=NativeStore.saveData(JSON.stringify(db));
- if(result!=="ok")throw Error("Şifreli verilerin kaydı doğrulanamadı. Yedek alın.");
  render();showView("dashboard");
  $("appVersionText").textContent=NativeStore.getAppVersion();
  setTimeout(()=>checkForUpdates(false),900);

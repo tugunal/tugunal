@@ -77,6 +77,9 @@ jobs:
       - name: Banka ve muhasebe islem testleri
         run: node .github/scripts/accounting_smoke_tests.js
 
+      - name: Kullanici adi, Hotmail, telefon ve sifre giris testleri
+        run: node .github/scripts/auth_flow_tests.js
+
       - name: Yerel fiş fatura ve irsaliye tanıma testleri
         run: |
           node --check app/src/main/assets/document_parser.js
