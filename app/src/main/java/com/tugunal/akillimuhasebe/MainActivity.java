@@ -1187,8 +1187,7 @@ public class MainActivity extends Activity {
             if (dataReadFailed) return "error_locked";
             try {
                 String encrypted = encryptLocalData(json == null ? "{}" : json);
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                        boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         .putString("encrypted_db", encrypted).commit();
                 if (saved) pendingLocalRegistrationUsername = "";
                 return saved ? "ok" : "error";
