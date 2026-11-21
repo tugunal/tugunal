@@ -13,6 +13,8 @@ import android.provider.MediaStore;
 import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.pdf.PdfRenderer;
+import android.os.ParcelFileDescriptor;
 import android.view.Window;
 import android.provider.Settings;
 import androidx.core.content.FileProvider;
@@ -56,6 +58,7 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import com.google.mlkit.vision.common.InputImage;
+import com.google.android.gms.tasks.Tasks;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
@@ -119,20 +122,33 @@ public class MainActivity extends Activity {
                 filePathCallback = callback;
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                boolean imageRequest = false;
                 String[] acceptTypes = params.getAcceptTypes();
+                boolean imageRequest = false, pdfRequest = false, bankRequest = false;
                 if (acceptTypes != null) {
                     for (String acceptType : acceptTypes) {
-                        if (acceptType != null && acceptType.toLowerCase().contains("image")) {
-                            imageRequest = true;
-                            break;
-                        }
+                        if (acceptType == null) continue;
+                        String accept = acceptType.toLowerCase(Locale.ROOT);
+                        if (accept.contains("image")) imageRequest = true;
+                        if (accept.contains("pdf")) pdfRequest = true;
+                        if (accept.contains("csv") || accept.contains("spreadsheet")
+                                || accept.contains("excel") || accept.contains("xlsx")
+                                || accept.contains(".txt")) bankRequest = true;
                     }
                 }
-                intent.setType(imageRequest ? "image/*" : "application/json");
-                if (imageRequest) {
-                    intent.putExtra(Intent.EXTRA_MIME_TYPES,
-                            new String[]{"image/jpeg", "image/png", "image/webp"});
+                if (imageRequest && !pdfRequest && !bankRequest) {
+                    intent.setType("image/*");
+                } else if (pdfRequest && !bankRequest) {
+                    intent.setType("application/pdf");
+                } else if (bankRequest) {
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                            "text/csv", "text/plain",
+                            "application/csv", "application/vnd.ms-excel",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "application/octet-stream"
+                    });
+                } else {
+                    intent.setType("application/json");
                 }
                 try {
                     startActivityForResult(intent, FILE_PICKER_REQUEST);
@@ -619,6 +635,74 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void recognizeInvoicePdfBytes(String base64) {
+        File temp = null;
+        TextRecognizer recognizer = null;
+        try {
+            if (base64 == null || base64.length() > 14000000) {
+                throw new IllegalArgumentException("PDF 10 MB sınırını aşıyor.");
+            }
+            byte[] bytes = Base64.getDecoder().decode(base64);
+            if (bytes.length == 0 || bytes.length > 10 * 1024 * 1024) {
+                throw new IllegalArgumentException("PDF boş veya 10 MB sınırından büyük.");
+            }
+            temp = File.createTempFile("invoice-", ".pdf", getCacheDir());
+            try (FileOutputStream output = new FileOutputStream(temp)) {
+                output.write(bytes);
+            }
+            recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            StringBuilder allText = new StringBuilder();
+            try (ParcelFileDescriptor descriptor =
+                         ParcelFileDescriptor.open(temp, ParcelFileDescriptor.MODE_READ_ONLY);
+                 PdfRenderer renderer = new PdfRenderer(descriptor)) {
+                int totalPages = renderer.getPageCount();
+                if (totalPages == 0) throw new IllegalStateException("PDF sayfası bulunamadı.");
+                for (int i = 0; i < Math.min(totalPages, 3); i++) {
+                    PdfRenderer.Page page = renderer.openPage(i);
+                    Bitmap bitmap = null;
+                    try {
+                        int width = page.getWidth();
+                        int height = page.getHeight();
+                        if (width <= 0 || height <= 0) continue;
+                        double factor = Math.min(2.5, Math.min(2100.0 / width, 2800.0 / height));
+                        int renderWidth = Math.max(1, (int) (width * factor));
+                        int renderHeight = Math.max(1, (int) (height * factor));
+                        bitmap = Bitmap.createBitmap(renderWidth, renderHeight, Bitmap.Config.ARGB_8888);
+                        bitmap.eraseColor(Color.WHITE);
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+                        String found = Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0))).getText();
+                        allText.append(found == null ? "" : found).append("\n");
+                    } finally {
+                        if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+                        page.close();
+                    }
+                }
+                if (totalPages > 3) allText.append("\n[İlk 3 sayfa okundu]");
+            }
+            sendInvoiceOcrResult(true, allText.toString(), "");
+        } catch (Exception e) {
+            String message = e.getMessage() == null ? "PDF okunamadı." : e.getMessage();
+            sendInvoiceOcrResult(false, "", message);
+        } finally {
+            if (recognizer != null) recognizer.close();
+            if (temp != null && temp.exists()) temp.delete();
+        }
+    }
+
+    private void parseBankFileBytes(String base64, String filename) {
+        try {
+            JSONObject parsed = BankFileParser.parse(base64, filename);
+            sendUpdateCallback("onBankFileResult", parsed);
+        } catch (Exception ex) {
+            JSONObject result = new JSONObject();
+            try {
+                result.put("success", false);
+                result.put("error", ex.getMessage() == null ? "Ekstre açılamadı." : ex.getMessage());
+            } catch (Exception ignored) { }
+            sendUpdateCallback("onBankFileResult", result);
+        }
+    }
+
     public class SecureBridge {
         @JavascriptInterface
         public String hasPin() {
@@ -740,6 +824,16 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void recognizeInvoicePdf(String base64Pdf) {
+            new Thread(() -> recognizeInvoicePdfBytes(base64Pdf)).start();
+        }
+
+        @JavascriptInterface
+        public void parseBankFile(String base64File, String filename) {
+            new Thread(() -> parseBankFileBytes(base64File, filename)).start();
+        }
+
+        @JavascriptInterface
         public void checkForUpdate(String currentVersion) {
             new Thread(() -> checkForLatestRelease(currentVersion)).start();
         }
@@ -754,7 +848,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.6.0";
+                return "0.7.0";
             }
         }
 

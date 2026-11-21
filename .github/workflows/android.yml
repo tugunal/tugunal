@@ -77,6 +77,9 @@ jobs:
           PY
           node --check /tmp/akilli-muhasebe.js
 
+      - name: Banka ve muhasebe islem testleri
+        run: node .github/scripts/accounting_smoke_tests.js
+
       - name: Android kaynak XML kontrolu
         run: |
           python3 - <<'PY'

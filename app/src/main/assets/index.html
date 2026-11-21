@@ -35,7 +35,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 </head>
 <body>
 <div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
-<header><div class="toprow"><small>AKILLI MUHASEBE • v0.6.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
+<header><div class="toprow"><small>AKILLI MUHASEBE • v0.7.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
 <main class="container">
 <section id="dashboard" class="view active">
 <div class="cards">
@@ -45,7 +45,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
 </div>
 <div class="panel update-card" style="margin-top:12px">
-  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v0.6.0</span></div>
+  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v0.7.0</span></div>
   <p class="muted" id="updateStatus">Yeni sürüm kontrolü yapılmadı.</p>
   <div class="toolbar">
     <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
@@ -78,7 +78,11 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
   <b>📷 Faturayı fotoğraftan oku</b>
   <p class="muted">JPG, PNG veya WEBP fotoğrafı seç. Metin cihazda okunur; bilgiler kaydedilmeden önce kontrolüne sunulur.</p>
   <div class="field"><input id="invoiceImage" type="file" accept="image/*" capture="environment" onchange="handleInvoiceImage(event)"></div>
-  <div id="ocrStatus" class="muted">Henüz fotoğraf seçilmedi.</div>
+  <div class="field">
+  <label>PDF faturayı oku (ilk 3 sayfa)</label>
+  <input id="invoicePdf" type="file" accept="application/pdf,.pdf" onchange="handleInvoicePdf(event)">
+</div>
+<div id="ocrStatus" class="muted">Henüz fotoğraf veya PDF seçilmedi.</div>
   <div id="ocrPreview" class="hidden" style="margin-top:12px">
     <div id="ocrSummary" class="notice"></div>
     <div class="toolbar" style="margin-top:10px"><button class="btn" id="ocrUseButton" onclick="useOcrInvoice()">Alanları faturaya aktar</button><button class="btn secondary" onclick="clearOcr()">Temizle</button></div>
@@ -91,7 +95,41 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <section id="employees" class="view"><div class="section"><h2>Personel kayıtları</h2><button onclick="openForm('employee')">+ Personel ekle</button></div><div class="panel" id="employeeList"></div><div class="notice" style="margin-top:12px">Personel bilgileri ve bordro ön hesapları içindir. SGK bildirgesi veya resmî bordro oluşturmaz.</div></section>
 <section id="payroll" class="view"><div class="section"><h2>Bordro ön hesapları</h2><button onclick="openForm('payroll')">+ Bordro ekle</button></div><div class="panel" id="payrollList"></div><div class="notice" style="margin-top:12px">Net tutar, girilen brüt ücret + ek ödeme - kesintiler şeklinde basit ön hesaplamadır. Vergi, SGK ve teşvik hesapları resmî mevzuat hesabı değildir.</div></section>
 
-<section id="finance" class="view"><div class="section"><h2>Kasa ve banka</h2><button onclick="openForm('account')">+ Hesap ekle</button></div><div class="panel" id="financeList"></div><div class="section"><h2>Hesap hareketi</h2><button onclick="openForm('transaction')">+ Hareket ekle</button></div><p class="muted">Gelir ve gider kayıtlarında ilgili kasa veya banka hesabını seçin. Bu sürüm banka hesabına doğrudan bağlanmaz.</p></section>
+<section id="finance" class="view"><div class="section"><h2>Kasa ve banka</h2><button onclick="openForm('account')">+ Hesap ekle</button></div><div class="panel" id="financeList"></div><div class="section"><h2>Hesap hareketi</h2><button onclick="openForm('transaction')">+ Hareket ekle</button></div><div class="toolbar"><button class="btn secondary" onclick="showView('bankStatement')">Banka ekstresi aktar / mutabakat</button></div><p class="muted">Banka ekstresi dosyalarını cihazdan aktarabilirsiniz. Banka hesabına doğrudan erişim yapılmaz.</p></section>
+<section id="bankStatement" class="view">
+<div class="section"><h2>Banka ekstresi ve mutabakat</h2><button onclick="showView('finance')">Hesaplara dön</button></div>
+<div class="panel">
+  <b>CSV / Excel ekstresi aktar</b>
+  <p class="muted">CSV, TXT veya XLSX dosyasını seç. Dosya cihazda okunur. Önce sütunları kontrol et, sonra işlemleri onayla. Ekstre içe aktarılınca kasa bakiyesi kendiliğinden değişmez.</p>
+  <div class="field"><label>Ekstre dosyası (en fazla 8 MB)</label><input id="bankFile" type="file" accept=".csv,.txt,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="handleBankFile(event)"></div>
+  <p class="muted" id="bankFileStatus">Henüz ekstre seçilmedi.</p>
+  <div id="bankMapping" class="hidden">
+    <div class="field"><label>Banka hesabı</label><select id="bankAccountId"></select></div>
+    <div class="formgrid">
+      <div class="field"><label>Tarih sütunu</label><select id="bankMapDate"></select></div>
+      <div class="field"><label>Açıklama sütunu</label><select id="bankMapDescription"></select></div>
+      <div class="field"><label>İşlem tutarı (+ / -)</label><select id="bankMapAmount"></select></div>
+      <div class="field"><label>Giriş / alacak sütunu</label><select id="bankMapCredit"></select></div>
+      <div class="field"><label>Çıkış / borç sütunu</label><select id="bankMapDebit"></select></div>
+      <div class="field"><label>Referans / dekont no.</label><select id="bankMapReference"></select></div>
+    </div>
+    <button class="btn secondary" onclick="prepareBankRows()">Ön izlemeyi oluştur</button>
+    <p class="muted">Tutar sütunu varsa giriş/çıkış seçmek gerekmez. Ayrı giriş ve çıkış sütunları varsa tutar sütununu boş bırak.</p>
+  </div>
+</div>
+<div class="panel hidden" id="bankPreview" style="margin-top:12px"><b>Ekstre ön izlemesi</b><div id="bankPreviewInfo" class="muted"></div><div id="bankPreviewRows"></div><button class="btn" onclick="importBankRows()">Kontrol ettim, ekstreyi aktar</button></div>
+<div class="section"><h2>Mutabakat durumu</h2><button onclick="suggestBankMatches()">Eşleşmeleri öner</button></div>
+<div class="panel"><div id="bankCounts"></div><div id="bankImportedList"></div></div>
+<div class="notice" style="margin-top:12px">Eşleşmeler yalnızca önerilir; sen onaylamadan mevcut muhasebe hareketine bağlanmaz. “Yeni hareket oluştur” seçeneği kasa/banka kaydını ancak açık onaydan sonra oluşturur.</div>
+</section>
+
+<section id="audit" class="view">
+<div class="section"><h2>Otomatik muhasebe kontrolü</h2><button onclick="renderAudit()">Yeniden tara</button></div>
+<div class="notice">Bu bölüm yapay zekâ değil, kurallara dayalı ön denetimdir. Bulgular mali müşavir kontrolü yerine geçmez.</div>
+<div class="panel" style="margin-top:12px" id="auditSummary"></div>
+<div class="panel" style="margin-top:12px" id="auditFindings"></div>
+</section>
+
 <section id="cashbook" class="view"><div class="section"><h2>Günlük kasa defteri</h2><button onclick="openForm('transaction')">+ Hareket ekle</button></div><div class="panel"><div class="formgrid"><div class="field"><label>Tarih</label><input id="cashbookDate" type="date" onchange="renderCashbook()"></div><div class="field"><label>Hesap</label><select id="cashbookAccount" onchange="renderCashbook()"></select></div></div><div id="cashbookSummary"></div></div><div class="section"><h2>Günlük hareketler</h2></div><div class="panel" id="cashbookRows"></div></section>
 <section id="vouchers" class="view"><div class="section"><h2>Muhasebe fişleri</h2><button onclick="openForm('voucher')">+ Fiş oluştur</button></div><div class="panel" id="voucherList"></div><div class="notice" style="margin-top:12px">Gelir-gider ve faturalar için otomatik fiş taslakları oluşturulur. Hesap kodlarını ve kayıtları kontrol edip onayla. Bu yardımcı fişler resmî defter kaydı yerine geçmez.</div></section>
 <section id="receivables" class="view"><div class="section"><h2>Cari borç / alacak takibi</h2><button onclick="openForm('settlement')">+ Tahsilat / ödeme</button></div><div class="panel" id="receivableList"></div><div class="notice" style="margin-top:12px">Satış faturaları müşteri alacağını, alış faturaları tedarikçi borcunu artırır. Tahsilat ve ödemeler ilgili bakiyeyi azaltır.</div></section>
@@ -104,6 +142,8 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <section id="calendar" class="view"><div class="section"><h2>Vergi ve ödeme takvimi</h2><button onclick="openForm('reminder')">+ Hatırlatma</button></div><div class="panel" id="reminderList"></div><p class="muted">Vergi ve SGK son tarihlerini güncel resmî takvimden doğrulayarak ekleyin.</p></section>
 
 <section id="more" class="view"><div class="section"><h2>Modüller</h2></div><div class="modulegrid">
+<button onclick="showView('bankStatement')"><span class="ico">⇄</span><b>Banka ekstreleri</b><span class="muted">CSV / Excel, mutabakat</span></button>
+<button onclick="showView('audit')"><span class="ico">✓</span><b>Hata denetimi</b><span class="muted">Fatura, fiş, banka kontrolü</span></button>
 <button onclick="showView('companies')"><span class="ico">▣</span><b>Mükellefler</b><span class="muted">Firma kayıtları ve geçiş</span></button>
 <button onclick="showView('vouchers')"><span class="ico">▤</span><b>Muhasebe fişleri</b><span class="muted">Çift taraflı kayıt</span></button>
 <button onclick="showView('receivables')"><span class="ico">⇄</span><b>Cari takip</b><span class="muted">Borç ve alacak</span></button>
@@ -133,7 +173,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
 <hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
 <button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
-<p class="muted">Sürüm <span id="appVersionText">0.6.0</span> • Güncellenebilir sürüm</p>
+<p class="muted">Sürüm <span id="appVersionText">0.7.0</span> • Güncellenebilir sürüm</p>
 </div></section>
 </main>
 
@@ -152,7 +192,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
-const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],settings:{businessName:''}};
+const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],bankRows:[],settings:{businessName:''}};
 const DEFAULT_CHART=[['100','Kasa'],['102','Bankalar'],['108','Diğer Hazır Değerler'],['120','Alıcılar'],['191','İndirilecek KDV'],['320','Satıcılar'],['391','Hesaplanan KDV'],['600','Yurtiçi Satışlar'],['649','Diğer Olağan Gelir ve Kârlar'],['770','Genel Yönetim Giderleri']];
 let db=JSON.parse(JSON.stringify(emptyDB)),unlocked=false,formKind='',overdueNoticeShown=false,idSequence=Date.now();
 function newRecordId(){idSequence=Math.max(Date.now(),idSequence+1);return idSequence;}
@@ -162,18 +202,18 @@ const dateToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getM
 function defaultChartFor(companyId){return DEFAULT_CHART.map((x,i)=>({id:Number(companyId)*100+i+1,companyId,code:x[0],name:x[1]}))}
 function normalizeDB(data){
  const d=Object.assign({},JSON.parse(JSON.stringify(emptyDB)),data||{});
- for(const k of ['companies','customers','transactions','invoices','reminders','employees','payroll','accounts','assets','chartAccounts','ledgerEntries','vouchers','instruments'])if(!Array.isArray(d[k]))d[k]=[];
+ for(const k of ['companies','customers','transactions','invoices','reminders','employees','payroll','accounts','assets','chartAccounts','ledgerEntries','vouchers','instruments','bankRows'])if(!Array.isArray(d[k]))d[k]=[];
  if(!d.settings)d.settings={businessName:''};
  if(!d.companies.length){const id=Date.now();d.companies=[{id,name:d.settings.businessName||'Genel İşletme',type:'business',taxOffice:'',taxNo:'',phone:'',email:'',address:'',fiscalYear:String(new Date().getFullYear())}];d.activeCompanyId=id;}
  if(!d.companies.some(c=>Number(c.id)===Number(d.activeCompanyId)))d.activeCompanyId=d.companies[0].id;
  if(!d.accounts.length)d.accounts=[{id:Date.now()+1,companyId:d.activeCompanyId,name:'Kasa',kind:'cash',opening:0},{id:Date.now()+2,companyId:d.activeCompanyId,name:'Banka',kind:'bank',opening:0}];
  for(const c of d.companies){const codes=d.chartAccounts.filter(a=>Number(a.companyId)===Number(c.id)).map(a=>String(a.code));DEFAULT_CHART.forEach((a,i)=>{if(!codes.includes(a[0]))d.chartAccounts.push({id:Number(String(c.id).slice(-8))+i+1,companyId:c.id,code:a[0],name:a[1]});});}
- for(const k of ['customers','transactions','invoices','reminders','employees','payroll','accounts','assets','ledgerEntries','vouchers','instruments'])d[k].forEach(x=>{if(!x.companyId)x.companyId=d.activeCompanyId;});
+ for(const k of ['customers','transactions','invoices','reminders','employees','payroll','accounts','assets','ledgerEntries','vouchers','instruments','bankRows'])d[k].forEach(x=>{if(!x.companyId)x.companyId=d.activeCompanyId;});
  return d;
 }
 function activeCompany(){return db.companies.find(c=>Number(c.id)===Number(db.activeCompanyId))||db.companies[0]}
 function scoped(type){return (db[type]||[]).filter(x=>!x.companyId||Number(x.companyId)===Number(db.activeCompanyId))}
-function switchCompany(id){db.activeCompanyId=Number(id);migrateLegacyData();persist()}
+function switchCompany(id){db.activeCompanyId=Number(id);pendingBank=null;clearBankPreview();migrateLegacyData();persist()}
 function chartAccount(code){return scoped('chartAccounts').find(x=>String(x.code)===String(code))}
 function chartOptions(){return scoped('chartAccounts').map(a=>'<option value="'+esc(a.code)+'">'+esc(a.code+' - '+a.name)+'</option>').join('')}
 function customerOptions(){return '<option value="">Cari seç (isteğe bağlı)</option>'+scoped('customers').map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')}
@@ -261,7 +301,7 @@ const net=findInvoiceAmount(text,['Mal\\s*Hizmet\\s*Toplam\\s*Tutarı','Mal\\s*H
 const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const party=lines.find(x=>x.length>2&&x.length<70&&!/FATURA|E-ARŞİV|E-FATURA|SAYIN|TARİH|TARIH|VERGİ|VERGI|VKN|TCKN|TOPLAM|KDV|HESAPLANAN|MAL HİZMET|MAL HIZMET|TUTAR|MATRAH|ÖDENECEK|ODENECEK|TEL|ADRES/i.test(x))||'';
 return {number,party,taxNo:tax,date:iso,net:finalNet?finalNet.toFixed(2):'',vatRate:vatRate?String(Number(vatRate)):'',vat,total};}
 function useOcrInvoice(){if(!pendingOcr)return;openForm('invoice');}
-function clearOcr(){pendingOcr=null;$('invoiceImage').value='';$('ocrPreview').classList.add('hidden');$('ocrStatus').textContent='Henüz fotoğraf seçilmedi.';}
+function clearOcr(){pendingOcr=null;$('invoiceImage').value='';if($('invoicePdf'))$('invoicePdf').value='';$('ocrPreview').classList.add('hidden');$('ocrStatus').textContent='Henüz fotoğraf veya PDF seçilmedi.';}
 function saveForm(){const d=readForm(),id=newRecordId();
 if(formKind==='company'){if(!d.name)return NativeStore.showMessage('Firma adı girin.');const company={...d,id,fiscalYear:d.fiscalYear||String(new Date().getFullYear())};db.companies.push(company);db.activeCompanyId=id;db.accounts.push({id:id+1,companyId:id,name:'Kasa',kind:'cash',opening:0},{id:id+2,companyId:id,name:'Banka',kind:'bank',opening:0});db.chartAccounts.push(...defaultChartFor(id));}
 if(formKind==='transaction'){if(!d.description||Number(d.amount)<=0)return NativeStore.showMessage('Açıklama ve geçerli tutar girin.');const tx={...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),accountId:Number(d.accountId)||scoped('accounts')[0]?.id};db.transactions.unshift(tx);addTransactionVoucher(tx);}
@@ -297,7 +337,7 @@ if(formKind==='voucher'){
 }
 if(formKind==='instrument'){if(!d.party||!d.number||Number(d.amount)<=0||!d.dueDate)return NativeStore.showMessage('Firma, belge numarası, tutar ve vade zorunludur.');db.instruments.unshift({...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),status:d.status||'pending'});}
 closeForm();persist();NativeStore.showMessage('Kayıt eklendi.');}
-function removeItem(type,id){if(type==='vouchers'){const v=scoped('vouchers').find(x=>Number(x.id)===Number(id));if(v&&v.sourceType!=='manual')return NativeStore.showMessage('Otomatik fiş, bağlı olduğu fatura veya hareket üzerinden yönetilmelidir.');}if(type==='customers'&&scoped('ledgerEntries').some(e=>Number(e.customerId)===Number(id)))return NativeStore.showMessage('Hareketi bulunan cari hesap silinemez.');if(!confirm('Bu kayıt silinsin mi?'))return;if(type==='invoices'){db.ledgerEntries=db.ledgerEntries.filter(e=>!(e.sourceType==='invoice'&&Number(e.sourceId)===Number(id))&&!(e.sourceType==='invoice-payment'&&Number(e.sourceId)===Number(id)));db.vouchers=db.vouchers.filter(v=>!(v.sourceType==='invoice'&&Number(v.sourceId)===Number(id))&&!(v.sourceType==='invoice-payment'&&Number(v.sourceId)===Number(id)));db.transactions=db.transactions.filter(t=>!(t.sourceType==='invoice-payment'&&Number(t.sourceId)===Number(id)));}if(type==='transactions')db.vouchers=db.vouchers.filter(v=>!(v.sourceType==='transaction'&&Number(v.sourceId)===Number(id))&&!(v.sourceType==='settlement'&&Number(v.sourceId)===Number(id)));db[type]=db[type].filter(x=>Number(x.id)!==Number(id));persist()}
+function removeItem(type,id){if(type==='transactions'){const tx=scoped('transactions').find(t=>Number(t.id)===Number(id));if(tx&&tx.sourceType==='invoice-payment')return NativeStore.showMessage('Fatura tahsilatı fatura üzerinden yönetilir.');if(tx&&tx.sourceType==='bank-import'){const bank=scoped('bankRows').find(b=>Number(b.id)===Number(tx.sourceId));if(bank){bank.status='unmatched';bank.matchedTxId=0;bank.suggestedTxId=0;}}if(tx&&tx.sourceType==='settlement')db.ledgerEntries=db.ledgerEntries.filter(e=>!(e.sourceType==='settlement'&&Number(e.sourceId)===Number(id)));for(const b of scoped('bankRows')){if(Number(b.matchedTxId)===Number(id)){b.status='unmatched';b.matchedTxId=0;b.suggestedTxId=0;}}}if(type==='vouchers'){const v=scoped('vouchers').find(x=>Number(x.id)===Number(id));if(v&&v.sourceType!=='manual')return NativeStore.showMessage('Otomatik fiş, bağlı olduğu fatura veya hareket üzerinden yönetilmelidir.');}if(type==='customers'&&scoped('ledgerEntries').some(e=>Number(e.customerId)===Number(id)))return NativeStore.showMessage('Hareketi bulunan cari hesap silinemez.');if(!confirm('Bu kayıt silinsin mi?'))return;if(type==='invoices'){db.ledgerEntries=db.ledgerEntries.filter(e=>!(e.sourceType==='invoice'&&Number(e.sourceId)===Number(id))&&!(e.sourceType==='invoice-payment'&&Number(e.sourceId)===Number(id)));db.vouchers=db.vouchers.filter(v=>!(v.sourceType==='invoice'&&Number(v.sourceId)===Number(id))&&!(v.sourceType==='invoice-payment'&&Number(v.sourceId)===Number(id)));db.transactions=db.transactions.filter(t=>!(t.sourceType==='invoice-payment'&&Number(t.sourceId)===Number(id)));}if(type==='transactions')db.vouchers=db.vouchers.filter(v=>!(v.sourceType==='transaction'&&Number(v.sourceId)===Number(id))&&!(v.sourceType==='settlement'&&Number(v.sourceId)===Number(id)));db[type]=db[type].filter(x=>Number(x.id)!==Number(id));persist()}
 function listRows(items,type){if(!items.length)return '<div class="empty">Henüz kayıt bulunmuyor.</div>';return items.map(x=>{let title=x.description||x.name||x.party||x.title||x.number||x.employeeName||'Kayıt',sub=x.date||x.startDate||x.period||x.phone||'';let val='',extra='';
 if(type==='transactions')val='<b class="'+(x.type==='income'?'positive':'negative')+'">'+(x.type==='income'?'+':'-')+money(x.amount)+'</b>';
 if(type==='invoices'){const late=x.dueDate&&x.dueDate<dateToday()&&invoiceRemaining(x)>0.009;val='<b>'+money(x.total)+'</b><div class="muted">'+(x.type==='sale'?'Satış':'Alış')+' • KDV '+money(x.vat)+'</div><div class="badge">'+(late?'Vadesi geçti':x.status==='paid'?'Ödendi':x.status==='partial'?'Kısmen ödendi':'Ödenmedi')+'</div>';}
@@ -325,12 +365,227 @@ if(overdue.length&&!overdueNoticeShown){NativeStore.showMessage(overdue.length+'
 const vatSales=invoices.filter(x=>x.type==='sale').reduce((s,x)=>s+x.vat,0),vatPurch=invoices.filter(x=>x.type==='purchase').reduce((s,x)=>s+x.vat,0),assetCost=assetsList.reduce((s,x)=>s+x.cost,0);
 $('businessName').value=company.name||'';$('companyTitle').textContent=company.name||'Mali Durum Özeti';
 renderVouchers();renderReceivables();renderInstruments();$('reportMonth').value=$('reportMonth').value||dateToday().slice(0,7);renderReports();
-$('cashbookDate').value=$('cashbookDate').value||dateToday();$('cashbookAccount').innerHTML='<option value="all">Tüm hesaplar</option>'+accountsList.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');renderCashbook();
+$('cashbookDate').value=$('cashbookDate').value||dateToday();const selectedCashAccount=$('cashbookAccount').value;$('cashbookAccount').innerHTML='<option value="all">Tüm hesaplar</option>'+accountsList.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');if(selectedCashAccount&&[...$('cashbookAccount').options].some(x=>x.value===selectedCashAccount))$('cashbookAccount').value=selectedCashAccount;renderCashbook();
+renderBankStatement();renderAudit();
 }function saveSettings(){const name=$('businessName').value.trim();if(name){activeCompany().name=name;db.settings.businessName=name;}persist();NativeStore.showMessage('Aktif firma bilgisi kaydedildi.')}
 function backup(){const p=prompt('Şifreli yedek için en az 8 karakterli bir parola belirleyin:');if(!p)return;if(p.length<8)return NativeStore.showMessage('Yedek parolası en az 8 karakter olmalı.');const r=NativeStore.saveBackup(JSON.stringify({app:'AkilliMuhasebe',version:2,createdAt:new Date().toISOString(),data:db}),p);if(r!=='ok')NativeStore.showMessage('Yedek oluşturulamadı.')}
 function restoreBackup(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const p=prompt('Bu yedeği oluştururken kullandığınız parolayı girin:');if(!p)return;try{const plain=NativeStore.decryptBackup(String(reader.result),p);if(!plain||plain==='ERROR')throw new Error('password');const o=JSON.parse(plain);db=normalizeDB(o.data||o);migrateLegacyData();persist();NativeStore.showMessage('Yedek geri yüklendi.')}catch(err){NativeStore.showMessage('Yedek açılamadı. Parolayı ve dosyayı kontrol edin.')}};reader.readAsText(file);e.target.value=''}
 function exportCsv(){const rows=[['Tarih','Tür','Açıklama','Tutar','Kategori','İlgili kişi'],...scoped('transactions').map(x=>[x.date,x.type==='income'?'Gelir':'Gider',x.description,x.amount,x.category,x.party])];const csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='akilli-muhasebe-hareketler.csv';a.click();URL.revokeObjectURL(url)}
 window.addEventListener('error',e=>{try{NativeStore.showMessage('Uygulama hatası: '+String(e.message||'bilinmeyen hata').slice(0,90))}catch(_){}});
+
+/* ----- Local bank statement import, provisional matching and rule-based audits ----- */
+let pendingBank=null;
+
+function clearBankPreview(){
+  if($('bankMapping'))$('bankMapping').classList.add('hidden');
+  if($('bankPreview'))$('bankPreview').classList.add('hidden');
+  if($('bankFileStatus'))$('bankFileStatus').textContent='Ekstre seçilmedi.';
+}
+function handleBankFile(event){
+  const file=event.target.files&&event.target.files[0]; if(!file)return;
+  pendingBank=null;
+  $('bankMapping').classList.add('hidden');$('bankPreview').classList.add('hidden');
+  if(!/\.(csv|txt|xlsx)$/i.test(file.name)){ $('bankFileStatus').textContent='Yalnızca CSV, TXT ve XLSX dosyaları destekleniyor.';return;}
+  if(file.size>8*1024*1024){$('bankFileStatus').textContent='Ekstre 8 MB sınırını aşıyor.';return;}
+  $('bankFileStatus').textContent='Dosya cihazda okunuyor: '+file.name;
+  const reader=new FileReader();
+  reader.onload=()=>{const base64=String(reader.result||'').split(',')[1]||'';if(!base64){$('bankFileStatus').textContent='Dosya okunamadı.';return;}NativeStore.parseBankFile(base64,file.name);};
+  reader.onerror=()=>$('bankFileStatus').textContent='Dosya açılamadı.';
+  reader.readAsDataURL(file);
+}
+window.onBankFileResult=function(result){
+  if(!result||!result.success){$('bankFileStatus').textContent=result?.error||'Ekstre ayrıştırılamadı.';return;}
+  pendingBank={headers:result.headers||[],rows:result.rows||[],filename:result.filename||'ekstre',format:result.format||'',prepared:[],skipped:0,accountId:null};
+  $('bankFileStatus').textContent=pendingBank.rows.length+' satır okundu ('+pendingBank.format+'). Sütunları kontrol et.';
+  for(const id of ['bankMapDate','bankMapDescription','bankMapAmount','bankMapCredit','bankMapDebit','bankMapReference']){
+    const element=$(id);element.innerHTML='<option value="">Seçilmedi</option>'+pendingBank.headers.map((v,i)=>'<option value="'+i+'">'+esc(v||('Sütun '+(i+1)))+'</option>').join('');
+  }
+  const guess=(id,phrases)=>{const index=pendingBank.headers.findIndex(x=>phrases.some(p=>bankPlain(x).includes(p)));if(index>=0)$(id).value=String(index)};
+  guess('bankMapDate',['tarih','islem tarihi','valortarihi','date']);
+  guess('bankMapDescription',['aciklama','islem aciklama','description','detay','islem','alici','gonderen']);
+  guess('bankMapAmount',['tutar','amount','islem tutari','hareket tutari']);
+  guess('bankMapCredit',['alacak','giris','gelen','credit','deposit']);
+  guess('bankMapDebit',['borc','cikis','giden','debit','withdrawal']);
+  guess('bankMapReference',['referans','dekont','islem no','transaction id','ref']);
+  const accounts=scoped('accounts').filter(x=>x.kind==='bank'||x.kind==='other');
+  const options=(accounts.length?accounts:scoped('accounts')).map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
+  $('bankAccountId').innerHTML=options;
+  $('bankMapping').classList.remove('hidden');
+};
+function bankPlain(s){return String(s||'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c').replace(/[^a-z0-9]+/g,' ').trim();}
+function parseBankDate(s){
+  const text=String(s??'').trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(text))return text.slice(0,10);
+  const m=text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+  if(m){const day=Number(m[1]),mon=Number(m[2]);if(day>=1&&day<=31&&mon>=1&&mon<=12)return m[3]+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
+  const serial=Number(text);if(serial>25000&&serial<100000){const d=new Date(Date.UTC(1899,11,30)+Math.floor(serial)*86400000);return d.toISOString().slice(0,10);}
+  return '';
+}
+function bankNormalizedKey(row){
+  const normalizedDescription=bankPlain(row.description).replace(/\s+/g,' ').slice(0,100);
+  return [row.fileName,row.lineNo,row.accountId,row.date,Math.round(row.amount*100),normalizedDescription,bankPlain(row.reference)].join('|');
+}
+function prepareBankRows(){
+  if(!pendingBank)return;
+  const get=id=>$(id).value===''?-1:Number($(id).value);
+  const columns={date:get('bankMapDate'),description:get('bankMapDescription'),amount:get('bankMapAmount'),credit:get('bankMapCredit'),debit:get('bankMapDebit'),reference:get('bankMapReference')};
+  const accountId=Number($('bankAccountId').value);
+  if(columns.date<0||columns.description<0||(columns.amount<0&&(columns.credit<0||columns.debit<0))){
+    $('bankFileStatus').textContent='Tarih, açıklama ve tutar sütunlarını seçmelisin.';return;
+  }
+  if(!scoped('accounts').some(a=>Number(a.id)===accountId)){NativeStore.showMessage('Geçerli kasa/banka hesabı seç.');return;}
+  const getCell=(row,index)=>index<0?'':String(row[index]||'').trim();
+  const prepared=[];let skipped=0;
+  for(let i=0;i<pendingBank.rows.length;i++){
+    const cells=pendingBank.rows[i],date=parseBankDate(getCell(cells,columns.date));
+    const description=getCell(cells,columns.description).slice(0,300);
+    let amount=columns.amount>=0?parseTurkishMoney(getCell(cells,columns.amount)):
+      (Math.abs(parseTurkishMoney(getCell(cells,columns.credit)))-Math.abs(parseTurkishMoney(getCell(cells,columns.debit))));
+    amount=Math.round(amount*100)/100;
+    if(!date||!description||!Number.isFinite(amount)||amount===0){skipped++;continue;}
+    const row={fileName:pendingBank.filename,lineNo:i+2,accountId,date,description,amount,reference:getCell(cells,columns.reference).slice(0,120)};
+    row.key=bankNormalizedKey(row);
+    prepared.push(row);
+  }
+  pendingBank.prepared=prepared;pendingBank.skipped=skipped;pendingBank.accountId=accountId;
+  $('bankPreviewInfo').textContent=prepared.length+' geçerli hareket • '+skipped+' atlanan satır. İşaretler: + giriş, - çıkış. Dosyada ters işaret varsa içe aktarma yapma.';
+  $('bankPreviewRows').innerHTML=prepared.slice(0,12).map(x=>'<div class="row"><div><b>'+esc(x.date)+'</b><div class="muted">'+esc(x.description)+'</div></div><b class="'+(x.amount>0?'positive':'negative')+'">'+money(x.amount)+'</b></div>').join('')||'<div class="empty">Geçerli hareket bulunamadı.</div>';
+  $('bankPreview').classList.remove('hidden');
+}
+function importBankRows(){
+  if(!pendingBank||!pendingBank.prepared.length)return NativeStore.showMessage('Önce geçerli satırları incele.');
+  if(!confirm(pendingBank.prepared.length+' banka hareketi aktarılacak. Bu işlem kasa bakiyesini otomatik değiştirmez. Onaylıyor musun?'))return;
+  const existing=new Set(scoped('bankRows').map(r=>r.key)),companyId=db.activeCompanyId;
+  let added=0,duplicates=0;
+  for(const row of pendingBank.prepared){
+    if(existing.has(row.key)){duplicates++;continue;}
+    const id=newRecordId();db.bankRows.unshift({...row,id,companyId,status:'unmatched',matchedTxId:0,suggestedTxId:0});
+    existing.add(row.key);added++;
+  }
+  $('bankFileStatus').textContent=added+' hareket aktarıldı; '+duplicates+' aynı dosya/satır daha önce aktarılmış.';
+  pendingBank=null;$('bankPreview').classList.add('hidden');$('bankMapping').classList.add('hidden');$('bankFile').value='';
+  persist();
+}
+function bankSuggestedTransaction(bankRow,used){
+  const sign=r=>r.type==='income'?1:-1;
+  const matches=scoped('transactions').filter(t=>
+    Number(t.accountId)===Number(bankRow.accountId)
+    && Math.abs(Number(t.amount)*sign(t)-Number(bankRow.amount))<=0.01
+    && Math.abs((Date.parse(t.date+'T00:00:00')-Date.parse(bankRow.date+'T00:00:00'))/86400000)<=3
+    && !used.has(Number(t.id))
+  );
+  return matches.length===1?matches[0]:null;
+}
+function suggestBankMatches(){
+  const alreadyUsed=new Set(scoped('bankRows').filter(r=>r.status==='matched').map(r=>Number(r.matchedTxId)));
+  let suggested=0,unresolved=0;
+  for(const row of scoped('bankRows')){
+    if(row.status!=='unmatched')continue;
+    const match=bankSuggestedTransaction(row,alreadyUsed);
+    if(match){row.status='suggested';row.suggestedTxId=match.id;alreadyUsed.add(Number(match.id));suggested++;}
+    else unresolved++;
+  }
+  persist();NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
+}
+function approveBankMatch(id){
+  const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));
+  if(!row||row.status!=='suggested')return;
+  const tx=scoped('transactions').find(t=>Number(t.id)===Number(row.suggestedTxId));
+  if(!tx)return NativeStore.showMessage('Önerilen muhasebe kaydı bulunamadı.');
+  if(!confirm('Banka hareketi mevcut muhasebe kaydıyla eşleştirilsin mi?'))return;
+  row.status='matched';row.matchedTxId=tx.id;row.suggestedTxId=0;persist();
+}
+function createBankTransaction(id){
+  const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));
+  if(!row||row.status==='matched')return NativeStore.showMessage('Bu banka hareketi zaten eşleştirilmiş.');
+  if(!confirm('Bu ekstre satırından YENİ gelir/gider kaydı ve muhasebe fişi TASLAĞI oluşturulsun mu? Önce başka kayıt olmadığını kontrol et.'))return;
+  const idTx=newRecordId();
+  const tx={id:idTx,companyId:db.activeCompanyId,date:row.date,description:row.description,
+      amount:Math.abs(row.amount),type:row.amount>0?'income':'expense',party:'',category:'Banka ekstresi',
+      accountId:row.accountId,sourceType:'bank-import',sourceId:row.id};
+  db.transactions.unshift(tx);addTransactionVoucher(tx);
+  row.status='matched';row.matchedTxId=idTx;row.suggestedTxId=0;
+  persist();
+}
+function changeBankRowStatus(id,status){
+  const row=scoped('bankRows').find(r=>Number(r.id)===Number(id));if(!row)return;
+  if(status==='ignored'&&!confirm('Ekstre hareketi dikkate alınmasın mı?'))return;
+  if(row.status==='matched'&&status==='unmatched'){
+    const tx=scoped('transactions').find(t=>Number(t.id)===Number(row.matchedTxId));
+    if(tx&&tx.sourceType==='bank-import')return NativeStore.showMessage('Önce bu ekstre satırından oluşturulan gelir/gider hareketini sil.');
+  }
+  row.status=status;row.suggestedTxId=0;if(status==='unmatched')row.matchedTxId=0;persist();
+}
+function renderBankStatement(){
+  if(!$('bankImportedList'))return;
+  const bankAccounts=scoped('accounts'),previous=$('bankAccountId')?.value;
+  if($('bankAccountId')&&$('bankMapping')&&!$('bankMapping').classList.contains('hidden')){
+    $('bankAccountId').innerHTML=bankAccounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
+    if(previous&&bankAccounts.some(x=>String(x.id)===previous))$('bankAccountId').value=previous;
+  }
+  const rows=scoped('bankRows'),matched=rows.filter(x=>x.status==='matched').length,
+    proposed=rows.filter(x=>x.status==='suggested').length,
+    ignored=rows.filter(x=>x.status==='ignored').length;
+  $('bankCounts').innerHTML='<div class="row"><span>Toplam satır</span><b>'+rows.length+'</b></div><div class="row"><span>Eşleşmiş</span><b class="positive">'+matched+'</b></div><div class="row"><span>Onay bekleyen öneri</span><b>'+proposed+'</b></div><div class="row"><span>Eşleşmemiş</span><b class="negative">'+(rows.length-matched-proposed-ignored)+'</b></div><div class="row"><span>Yoksayılan</span><b>'+ignored+'</b></div>';
+  $('bankImportedList').innerHTML=rows.slice(0,120).map(r=>{
+    const tx=scoped('transactions').find(t=>Number(t.id)===Number(r.suggestedTxId||r.matchedTxId));
+    const badge=r.status==='matched'?'Eşleşti':r.status==='suggested'?'Öneri var':r.status==='ignored'?'Yoksayıldı':'Eşleşmedi';
+    const options=r.status==='suggested'?'<button class="tag" onclick="approveBankMatch('+r.id+')">Eşleşmeyi onayla</button>':
+        r.status==='unmatched'?'<button class="tag" onclick="createBankTransaction('+r.id+')">Yeni hareket oluştur</button>':'';
+    const reset=r.status==='ignored'||r.status==='suggested'||r.status==='matched'?
+      '<button class="tag" onclick="changeBankRowStatus('+r.id+',\'unmatched\')">Geri al</button>':
+      '<button class="tag" onclick="changeBankRowStatus('+r.id+',\'ignored\')">Yoksay</button>';
+    return '<div class="row"><div style="min-width:0;flex:1"><b>'+esc(r.date)+' • '+esc(r.description)+'</b><div class="muted">'+esc(r.reference||r.fileName)+' · '+badge+(tx?' · '+esc(tx.description):'')+'</div><div class="toolbar" style="margin-top:4px">'+options+reset+'</div></div><div style="text-align:right"><b class="'+(r.amount>0?'positive':'negative')+'">'+money(r.amount)+'</b></div></div>';
+  }).join('')||'<div class="empty">Henüz banka ekstresi aktarılmadı.</div>';
+  if(rows.length>120)$('bankImportedList').innerHTML+='<p class="muted">İlk 120 satır gösteriliyor. Diğerleri kayıtlıdır.</p>';
+}
+function getAuditFindings(){
+  const findings=[],add=(severity,title,detail,view)=>findings.push({severity,title,detail,view});
+  const invoices=scoped('invoices'),vouchers=scoped('vouchers'),customers=scoped('customers');
+  const keys=new Map();
+  for(const inv of invoices){
+    const key=[bankPlain(inv.number),bankPlain(inv.party),inv.date].join('|');
+    if(inv.number&&keys.has(key))add('yüksek','Tekrarlanan fatura','Aynı numara, firma ve tarih: '+inv.number+' / '+inv.party,'invoices');
+    else keys.set(key,inv.id);
+    if(!inv.number||!inv.party)add('orta','Eksik fatura bilgisi','Fatura numarası veya firma eksik.','invoices');
+    if(Number(inv.paidAmount||0)>Number(inv.total||0)+0.01)add('yüksek','Aşırı ödeme','Fatura '+inv.number+' için ödeme toplamı aşıyor.','invoices');
+    if(Math.abs((Number(inv.net||0)+Number(inv.vat||0))-Number(inv.total||0))>0.05)add('yüksek','Fatura tutarı tutarsız','Fatura '+inv.number+' matrah + KDV toplamına uymuyor.','invoices');
+    if(!inv.taxNo)add('orta','Vergi numarası eksik','Fatura '+inv.number+' için vergi numarası kontrol edilmeli.','invoices');
+  }
+  for(const v of vouchers){
+    const entries=v.entries||[],debit=entries.reduce((a,x)=>a+Number(x.debit||0),0),credit=entries.reduce((a,x)=>a+Number(x.credit||0),0);
+    if(!entries.length||Math.abs(debit-credit)>0.01)add('yüksek','Dengesiz muhasebe fişi','Fiş '+(v.voucherNo||'')+' borç/alacak tutarları eşit değil.','vouchers');
+  }
+  const txIds=new Set(scoped('transactions').map(x=>Number(x.id)));
+  const dangling=scoped('bankRows').filter(x=>x.status==='matched'&&!txIds.has(Number(x.matchedTxId))).length;
+  if(dangling)add('yüksek','Kopmuş banka eşleşmesi',dangling+' eşleşmenin muhasebe hareketi silinmiş.','bankStatement');
+  const unpaired=scoped('bankRows').filter(x=>x.status==='unmatched').length;
+  if(unpaired)add('orta','Mutabakat bekliyor',unpaired+' banka hareketi henüz eşleştirilmedi.','bankStatement');
+  const late=overdueInvoices().length;
+  if(late)add('orta','Gecikmiş tahsilat/ödeme',late+' faturanın vadesi geçmiş.','overdue');
+  const noTaxId=customers.filter(x=>!x.taxNo).length;
+  if(noTaxId)add('bilgi','Eksik cari vergi kimliği',noTaxId+' cari hesapta vergi numarası bulunmuyor.','customers');
+  return findings;
+}
+function renderAudit(){
+  if(!$('auditFindings'))return;
+  const findings=getAuditFindings();
+  const critical=findings.filter(x=>x.severity==='yüksek').length;
+  $('auditSummary').innerHTML='<div class="row"><span>Toplam kontrol bulgusu</span><b>'+findings.length+'</b></div><div class="row"><span>Öncelikli bulgular</span><b class="negative">'+critical+'</b></div>';
+  $('auditFindings').innerHTML=findings.map(x=>'<div class="row"><div style="flex:1"><b>'+esc(x.title)+'</b><div class="muted">'+esc(x.detail)+'</div></div><div><span class="badge">'+esc(x.severity)+'</span><button class="tag" onclick="showView(\''+x.view+'\')">İncele</button></div></div>').join('')||'<div class="empty">Taranan kayıtlar içinde belirlenen kurallara göre hata bulunmadı.</div>';
+}
+function handleInvoicePdf(event){
+  const file=event.target.files&&event.target.files[0];if(!file)return;
+  if(!/\.pdf$/i.test(file.name)&&file.type!=='application/pdf')return NativeStore.showMessage('Yalnızca PDF fatura seç.');
+  if(file.size>10*1024*1024)return NativeStore.showMessage('PDF 10 MB sınırını aşıyor.');
+  $('ocrPreview').classList.add('hidden');
+  $('ocrStatus').textContent='PDF fatura okunuyor: '+file.name;
+  const reader=new FileReader();
+  reader.onload=()=>{const base64=String(reader.result||'').split(',')[1];if(!base64){$('ocrStatus').textContent='PDF açılamadı.';return;}NativeStore.recognizeInvoicePdf(base64);};
+  reader.onerror=()=>$('ocrStatus').textContent='PDF okunamadı.';
+  reader.readAsDataURL(file);
+}
+
 bootstrap();
 </script>
 </body></html>

@@ -67,3 +67,20 @@ Repo Settings > Secrets and variables > Actions altinda su repository secrets de
 Bunlar olmadan workflow yalnizca debug APK uretir ve GitHub Release yayinlamaz. Ilk imzali surumden sonraki APK guncellemeleri ayni anahtarla imzalanmalidir. Imza anahtarini kaybetme veya degistirme.
 
 Eski 0.5.x debug APK'lari farkli gecici debug sertifikalariyla derlenmistir; Android bu uygulamayi yeni kalici imzali anahtarla dogrudan uzerine kurmaya izin vermez. Ilk geciste uygulama icinden sifreli yedek al, eski APK'yi kaldir, ilk imzali APK'yi kur ve yedegi geri yukle. Sonraki surumlerde uygulama ici guncelleme calisir.
+
+## Surum 0.7.0 - banka ekstreleri, PDF ve denetim
+
+- Banka ekstrelerinin CSV, TXT ve XLSX olarak cihaz uzerinde okunmasi
+- Tarih/aciklama/tutar/borc/alacak/referans sutun eslemesi; kullanici on izleme ve onayi
+- Tekrar eden dosya ve satirin ikinci kez aktarilmamasi
+- Mevcut gelir-gider hareketiyle ayni banka hesabi, tutar ve yakin tarihe gore esleme ONERISI
+- Eslemelerin manuel onaylanmasi; istenirse bankadan taslak hareket ve dengeli muhasebe fisi olusturma
+- PDF faturalarin ilk 3 sayfasinin cihazda OCR ile okunup kontrol edilebilir taslak haline getirilmesi
+- Tekrar eden fatura, dengesiz muhasebe fisi, bozuk toplam, eksik vergi no, vadesi gecen fatura ve eslesmeyen ekstreye yonelik kuralli hata denetimi
+- Github Actions uzerinde JavaScript finansal kural testleri
+
+Ekstre dosyasi yuklemek kendi basina kasa/banka bakiyesini DEGISTIRMEZ.
+Yeni hareket olusturulmasi sadece kullanicinin acik onayi ile olur.
+Bu surum herhangi bir bankaya, GIB'e veya SGK'ya canli baglanmaz; resmi mutabakat/defter degildir.
+XLS uzantili eski Excel bicimi ve banka PDF ekstresi bu surumde desteklenmez.
+PDF okuma baski kalitesine ve belgenin yerlesimine bagli olarak hata yapabilir.
