@@ -67,12 +67,15 @@ public class MainActivity extends Activity {
     private static final String PREFS = "akilli_muhasebe_secure";
     private static final String KEY_ALIAS = "akilli_muhasebe_local_data_key";
     private static final int FILE_PICKER_REQUEST = 4107;
+    private static final int EMBEDDED_CAMERA_REQUEST = 4108;
     private static final int BACKUP_ITERATIONS = 150000;
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private long pausedAt = 0L;
     private File pendingInstallFile;
+    private boolean embeddedCameraActive = false;
+    private volatile boolean dataReadFailed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -208,14 +211,15 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onPause() {
-        pausedAt = System.currentTimeMillis();
+        // Leaving the main screen for our own camera is not leaving the app.
+        pausedAt = embeddedCameraActive ? 0L : System.currentTimeMillis();
         super.onPause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null && pausedAt > 0L
+        if (webView != null && !embeddedCameraActive && pausedAt > 0L
                 && System.currentTimeMillis() - pausedAt > 30000L) {
             webView.postDelayed(() ->
                     webView.evaluateJavascript("if(window.lockApp){window.lockApp();}", null), 250);
@@ -232,6 +236,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == EMBEDDED_CAMERA_REQUEST) {
+            embeddedCameraActive = false;
+            pausedAt = 0L;
+            if (resultCode == RESULT_OK && data != null
+                    && data.hasExtra(CameraCaptureActivity.EXTRA_CAPTURED_PATH)) {
+                String filepath = data.getStringExtra(CameraCaptureActivity.EXTRA_CAPTURED_PATH);
+                sendEmbeddedCameraStatus("Fotoğraf onaylandı. Belge metni okunuyor.", true);
+                new Thread(() -> recognizeCapturedPhoto(filepath)).start();
+            } else {
+                sendEmbeddedCameraStatus("Kamera kapatıldı. Fotoğraf kaydedilmedi.", false);
+            }
+            return;
+        }
         if (requestCode == FILE_PICKER_REQUEST && filePathCallback != null) {
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
@@ -358,6 +375,43 @@ public class MainActivity extends Activity {
         return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
     }
 
+    private boolean saveExportFile(String fileName, String mimeType, String contents) {
+        try {
+            if (contents == null || contents.getBytes(StandardCharsets.UTF_8).length > 8_000_000)
+                throw new IllegalArgumentException("Dosya 8 MB sınırını aşıyor.");
+            if (fileName == null || !fileName.matches("[A-Za-z0-9_-]{1,72}\\.csv"))
+                throw new IllegalArgumentException("Geçersiz dosya adı.");
+            OutputStream outputStream;
+            if (Build.VERSION.SDK_INT >= 29) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+                values.put(MediaStore.MediaColumns.MIME_TYPE, "text/csv");
+                values.put(MediaStore.MediaColumns.RELATIVE_PATH,
+                        Environment.DIRECTORY_DOWNLOADS + "/AkilliMuhasebe");
+                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                if (uri == null) throw new IllegalStateException("Dışa aktarma dosyası oluşturulamadı.");
+                outputStream = getContentResolver().openOutputStream(uri);
+            } else {
+                File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "AkilliMuhasebe");
+                if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("Klasör oluşturulamadı.");
+                outputStream = new FileOutputStream(new File(dir, fileName));
+            }
+            if (outputStream == null) throw new IllegalStateException("Dışa aktarma dosyası açılamadı.");
+            try (OutputStream out = outputStream) {
+                out.write(contents.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            }
+            runOnUiThread(() -> Toast.makeText(this,
+                    "CSV, İndirilenler/AkilliMuhasebe klasörüne kaydedildi.",
+                    Toast.LENGTH_LONG).show());
+            return true;
+        } catch (Exception ex) {
+            runOnUiThread(() -> Toast.makeText(this,
+                    "CSV dışa aktarımı başarısız: " + ex.getMessage(), Toast.LENGTH_LONG).show());
+            return false;
+        }
+    }
+
     private boolean saveBackupFile(String encryptedEnvelope) {
         String fileName = "AkilliMuhasebe_Yedek_" + System.currentTimeMillis() + ".json";
         try {
@@ -391,6 +445,58 @@ public class MainActivity extends Activity {
                     "Yedek kaydedilemedi: " + ex.getMessage(),
                     Toast.LENGTH_LONG).show());
             return false;
+        }
+    }
+
+    private void sendEmbeddedCameraStatus(String message, boolean accepted) {
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("message", message);
+            payload.put("accepted", accepted);
+        } catch (Exception ignored) { }
+        String argument = payload.toString();
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript("window.onEmbeddedCameraStatus && window.onEmbeddedCameraStatus("
+                        + argument + ");", null);
+            }
+        });
+    }
+
+    private void recognizeCapturedPhoto(String path) {
+        File file = null;
+        TextRecognizer recognizer = null;
+        try {
+            if (path == null || path.isEmpty()) {
+                throw new IllegalArgumentException("Fotoğraf yolu bulunamadı.");
+            }
+            file = new File(path).getCanonicalFile();
+            File cache = getCacheDir().getCanonicalFile();
+            if (!cache.equals(file.getParentFile()) ||
+                    !file.getName().startsWith("document_capture_") ||
+                    !file.getName().endsWith(".jpg")) {
+                throw new SecurityException("Güvenilmeyen fotoğraf konumu.");
+            }
+            if (!file.exists() || file.length() < 512 || file.length() > 20L * 1024 * 1024) {
+                throw new IllegalArgumentException("Fotoğraf boş veya çok büyük.");
+            }
+            final File captured = file;
+            recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            final TextRecognizer activeRecognizer = recognizer;
+            InputImage input = InputImage.fromFilePath(this, Uri.fromFile(captured));
+            activeRecognizer.process(input)
+                    .addOnSuccessListener(result ->
+                            sendInvoiceOcrResult(true, result.getText(), ""))
+                    .addOnFailureListener(error ->
+                            sendInvoiceOcrResult(false, "", "Fotoğrafın yazıları okunamadı. Yeniden çekmeyi deneyin."))
+                    .addOnCompleteListener(task -> {
+                        activeRecognizer.close();
+                        if (captured.exists()) captured.delete();
+                    });
+        } catch (Exception error) {
+            if (recognizer != null) recognizer.close();
+            if (file != null && file.exists()) file.delete();
+            sendInvoiceOcrResult(false, "", "Fotoğraf işlenemedi: " + error.getMessage());
         }
     }
 
@@ -745,21 +851,46 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String loadData() {
             String encrypted = getSharedPreferences(PREFS, MODE_PRIVATE).getString("encrypted_db", "");
-            if (encrypted.isEmpty()) return "{}";
-            try {
-                return decryptLocalData(encrypted);
-            } catch (Exception ex) {
+            if (encrypted.isEmpty()) {
+                dataReadFailed = false;
                 return "{}";
+            }
+            try {
+                String plainText = decryptLocalData(encrypted);
+                dataReadFailed = false;
+                return plainText;
+            } catch (Exception ex) {
+                // Never replace unreadable encrypted user records with an empty database.
+                dataReadFailed = true;
+                return "__DECRYPT_FAILED__";
             }
         }
 
         @JavascriptInterface
         public String saveData(String json) {
+            if (dataReadFailed) return "error_locked";
             try {
                 String encrypted = encryptLocalData(json == null ? "{}" : json);
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         .putString("encrypted_db", encrypted).apply();
                 return "ok";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        @JavascriptInterface
+        public String saveRestoredData(String json) {
+            // Called only after user consciously selects and decrypts a backup.
+            try {
+                JSONObject parsed = new JSONObject(json);
+                if (!parsed.has("companies") || !parsed.has("transactions"))
+                    return "error_format";
+                String encrypted = encryptLocalData(json);
+                boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                        .putString("encrypted_db", encrypted).commit();
+                if (saved) dataReadFailed = false;
+                return saved ? "ok" : "error";
             } catch (Exception ex) {
                 return "error";
             }
@@ -782,6 +913,21 @@ public class MainActivity extends Activity {
             } catch (Exception ex) {
                 return "ERROR";
             }
+        }
+
+        @JavascriptInterface
+        public void openInvoiceCamera() {
+            runOnUiThread(() -> {
+                if (embeddedCameraActive) return;
+                try {
+                    embeddedCameraActive = true;
+                    Intent camera = new Intent(MainActivity.this, CameraCaptureActivity.class);
+                    startActivityForResult(camera, EMBEDDED_CAMERA_REQUEST);
+                } catch (Exception ex) {
+                    embeddedCameraActive = false;
+                    sendEmbeddedCameraStatus("Kamera açılamadı. Kamera iznini kontrol edin.", false);
+                }
+            });
         }
 
         @JavascriptInterface
@@ -844,11 +990,34 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String saveCsvExport(String filename, String data) {
+            return saveExportFile(filename, "text/csv", data) ? "ok" : "error";
+        }
+
+        @JavascriptInterface
+        public void openOfficialPortal(String portalId) {
+            String url = null;
+            if ("gib".equals(portalId)) url = "https://ebelge.gib.gov.tr/";
+            else if ("digitaltax".equals(portalId)) url = "https://dijital.gib.gov.tr/";
+            else if ("sgk".equals(portalId)) url = "https://e.sgk.gov.tr/Uygulamalar/Isveren";
+            if (url == null) return;
+            final String target = url;
+            runOnUiThread(() -> {
+                try {
+                    Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+                    startActivity(browser);
+                } catch (Exception ex) {
+                    Toast.makeText(MainActivity.this, "Resmî portal açılamadı.", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
         public String getAppVersion() {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.7.0";
+                return "0.8.0";
             }
         }
 

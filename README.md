@@ -84,3 +84,28 @@ Yeni hareket olusturulmasi sadece kullanicinin acik onayi ile olur.
 Bu surum herhangi bir bankaya, GIB'e veya SGK'ya canli baglanmaz; resmi mutabakat/defter degildir.
 XLS uzantili eski Excel bicimi ve banka PDF ekstresi bu surumde desteklenmez.
 PDF okuma baski kalitesine ve belgenin yerlesimine bagli olarak hata yapabilir.
+
+
+## Sürüm 0.8.0 - uygulama içi belge kamerası
+
+- Ana ekrandaki "Fotoğraf çek" ve Faturalar ekranındaki "Uygulama İçi Kamerayla Fotoğraf Çek" düğmeleri
+- Android CameraX ile uygulama içinde canlı kamera ön izlemesi
+- Belgeler için arka kamera; varsa flaş ışığını aç/kapat
+- Fotoğrafı çek, ön izlemede kontrol et, yeniden çek veya onayla
+- Onaylanmış fotoğrafın yerel ML Kit OCR'ye gönderilmesi
+- OCR sonucunu fatura taslağına aktarmadan önce kontrol ve manuel düzeltme
+- Kamera görüntüsü cihazdan sunucuya yüklenmez; geçici fotoğraf okuma tamamlandığında silinir
+- Uygulamanın kendi kamera ekranından dönüş, ekranı yeniden PIN girişine yönlendirmez
+- Diğer uygulamaya geçince mevcut güvenlik kilidi davranışı korunur
+
+### Telefon testi
+
+1. Uygulamayı aç ve PIN ile giriş yap.
+2. Ana sayfa > Fotoğraf çek'e dokun. İlk kullanımda kamera izni ver.
+3. Belgeyi çerçevele, ışığı değiştir ve Fotoğraf Çek'e dokun.
+4. Yeniden Çek / Fotoğrafı Kullan düğmelerini kontrol et.
+5. Onayla; Faturalar ekranına dönüp okunan metni incele ve alanları düzelt.
+6. Kamera ekranında Geri'ye basıp uygulamanın şifre ekranına atmadığını kontrol et.
+7. Galeriden JPEG/PNG/WEBP ve PDF ile eski belge seçimi akışının çalıştığını da doğrula.
+
+Not: v0.8.0 geçici fotoğraf dosyalarını arşive kaydetmez, yalnızca OCR taslağı hazırlar. Fotoğrafın aslı gerekiyorsa cihazda ayrıca güvenli biçimde saklayın. Test APK'ları farklı imzalarla derlenebildiğinden, mevcut test sürümünün üzerine kurulum garanti değildir; önce şifreli yedek alın.

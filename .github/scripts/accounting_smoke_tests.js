@@ -76,4 +76,11 @@ assert.ok(expr("getAuditFindings().some(f=>f.title==='Tekrarlanan fatura')"),"du
 const scopedCount=expr("(()=>{const id=db.activeCompanyId;db.bankRows.push({id:2002,companyId:id+123,date:'2026-11-21',amount:99,status:'unmatched'});return scoped('bankRows').length})()");
 assert.equal(scopedCount,1);
 
-console.log("PASS: JS syntax, locale money, date, company scope, voucher balance, reconciliation suggestion, duplicate invoice audit");
+assert.ok(page.includes("NativeStore.openInvoiceCamera"), "native camera button is not wired");
+assert.ok(page.includes("window.onEmbeddedCameraStatus"), "camera return callback is missing");
+assert.ok(page.includes("Uygulama İçi Kamerayla Fotoğraf Çek"), "invoice camera UI is missing");
+assert.ok(page.includes("if(readOnlyRecovery)"), "recovery read-only safeguard missing");
+assert.ok(page.includes("saveRestoredData"), "encrypted backup restore write missing");
+assert.ok(page.includes("saveCsvExport"), "native CSV writer missing");
+
+console.log("PASS: finance rules + embedded camera UI + data recovery and CSV checks");
