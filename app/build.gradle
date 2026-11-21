@@ -7,11 +7,11 @@ android {
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.tugunal.akillimuhasebe"
+        applicationId "com.tugunal.akillimuhasebe.stable"
         minSdk 26
         targetSdk 35
-        versionCode 19
-        versionName "1.2.4"
+        versionCode 20
+        versionName "1.2.5"
     }
 
     signingConfigs {
@@ -25,23 +25,18 @@ android {
 
     buildTypes {
         debug {
-            // Unique clean-install package; does not collide with old test/release apps.
-            applicationIdSuffix ".deneme"
+            // Development-only build is never distributed and cannot replace the signed app.
+            applicationIdSuffix ".internal"
+            debuggable true
         }
         release {
-            // Existing stable application: always preserve this ID for upgrades.
-            applicationIdSuffix ".stable"
+            // ONE canonical application ID for all future consumer updates:
+            // com.tugunal.akillimuhasebe.stable
+            // Never change the app ID or release certificate.
             if (System.getenv("ANDROID_KEYSTORE_PATH")) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled false
-        }
-        installfix {
-            // Parallel, clean installation when Android rejects the older build.
-            // Isolated from .stable and older test APKs. Existing records stay untouched.
-            initWith release
-            applicationIdSuffix ".kurulum"
-            matchingFallbacks = ['release']
+            debuggable false
             minifyEnabled false
         }
     }

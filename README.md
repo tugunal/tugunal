@@ -238,3 +238,21 @@ güncel mevzuat kontrolleri ve fiziksel cihaz denemeleri gereklidir.
 - Mevcut kullanıcıların PIN giriş akışı korunur; ilk kayıt ekranı yalnızca cihazda PIN yoksa açılır.
 - Ayarlar içinden profil görüntülenebilir ve güncellenebilir.
 - Bu ekran çevrimdışı yerel profil oluşturur; Firebase hesabı, e-posta doğrulaması veya cihazlar arası senkronizasyon sağlamaz.
+
+
+## v1.2.5 – TEK APK VE KALICI IMZA STANDARDI (ZORUNLU)
+
+- Kullanıcıya teslim edilen uygulama kimliği **yalnızca** `com.tugunal.akillimuhasebe.stable`.
+- Kararlı sürüm imzası tek ve değişmez. SHA-256 sertifika parmak izi:
+  `2361a76413916f19f0a0ccf5530a0d5213b88c2c2600cf598b49239d7d37adf5`.
+- Debug için `.internal` uzantısı kalabilir fakat **debug APK yayımlanmayacak**, kullanıcıya kurulacak APK olarak verilmeyecek.
+- Eski `.deneme`, `.kurulum` ve ilk `com.tugunal.akillimuhasebe` paketleri kullanım dışıdır. Bunlara yeni sürüm üretmeyin.
+- Android GitHub Actions sadece **bir** `assembleRelease` yapar. İmza secrets eksikse kurulabilir APK dağıtmaz; imzasız bir imzalama girdisi hazırlar.
+- İmza secrets hazırsa APK sertifika parmak izini ve paket kimliğini test eder; kimlik veya imza değişmişse derleme yayımlamadan DURUR.
+- Uygulama içi güncelleme yalnızca `AkilliMuhasebe-v<surum>.apk` isimli, aynı paket kimliğine ve aynı imzaya sahip resmî APK'yı kurar.
+- Anahtarın ve parolanın kendisi **GitHub'a veya README'ye konulmaz**. Anahtar yedeği güvenli şekilde muhafaza edilir. Dört Actions sırrı:
+  `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+- Gelecek sürümler aynı applicationId ve sertifika ile versionCode artırılarak hazırlanmalıdır.
+- Telefona farklı kimlikle yüklenen önceki uygulamalar otomatik silinemez. Her eski kopyanın **Ayarlar -> Şifreli Yedek** dosyasını al, tek resmî uygulamaya yükle ve kayıtları doğrula. Diğerlerini sadece kullanıcı onayıyla kaldır.
+
+ÖNEMLİ: `.deneme` cihazında veri varsa `.stable` APK o veriyi otomatik göremez; Android uygulama yalıtımı bunun için vardır. Yeni APK tek başına eskilerin simgelerini kaldırmaz. Bu bir defalık kontrollü veri taşıma gerektirir.

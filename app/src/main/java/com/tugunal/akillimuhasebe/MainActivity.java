@@ -67,6 +67,7 @@ import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 public class MainActivity extends Activity {
+    private static final String CANONICAL_PACKAGE_ID = "com.tugunal.akillimuhasebe.stable";
     private static final String PREFS = "akilli_muhasebe_secure";
     private static final String KEY_ALIAS = "akilli_muhasebe_local_data_key";
     private static final int FILE_PICKER_REQUEST = 4107;
@@ -602,6 +603,9 @@ public class MainActivity extends Activity {
     private void checkForLatestRelease(String currentVersion) {
         HttpURLConnection connection = null;
         try {
+            if (!CANONICAL_PACKAGE_ID.equals(getPackageName())) {
+                throw new IllegalStateException("Bu test kurulumu resmî uygulamanın güncellemesi değildir. Önce şifreli yedek alın; resmî tek uygulamayı kurun.");
+            }
             URL url = new URL("https://api.github.com/repos/tugunal/tugunal/releases/latest");
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -638,11 +642,8 @@ public class MainActivity extends Activity {
                     JSONObject asset = assets.optJSONObject(i);
                     if (asset == null) continue;
                     String name = asset.optString("name", "");
-                    boolean separateInstall = getPackageName().endsWith(".kurulum");
-                    boolean rightPackage = separateInstall ? name.endsWith("-KURULUM.apk")
-                                                           : !name.endsWith("-KURULUM.apk");
-                    if (name.toLowerCase(Locale.ROOT).endsWith(".apk")
-                            && name.startsWith("AkilliMuhasebe-") && rightPackage) {
+                    // Exact asset name: other build flavors must NEVER be installed.
+                    if (name.equals("AkilliMuhasebe-v" + latestVersion + ".apk")) {
                         downloadUrl = asset.optString("browser_download_url", "");
                         digest = asset.optString("digest", "");
                         break;
@@ -694,11 +695,15 @@ public class MainActivity extends Activity {
         HttpURLConnection connection = null;
         File target = null;
         try {
+            if (!CANONICAL_PACKAGE_ID.equals(getPackageName())) {
+                throw new SecurityException("Eski test paketinden otomatik güncelleme yapılamaz.");
+            }
             URL url = new URL(downloadUrl);
+            String path = url.getPath();
             if (!"https".equalsIgnoreCase(url.getProtocol())
                     || !"github.com".equalsIgnoreCase(url.getHost())
-                    || !url.getPath().startsWith("/tugunal/tugunal/releases/download/")) {
-                throw new IllegalArgumentException("Güvenilmeyen güncelleme adresi.");
+                    || !path.matches("^/tugunal/tugunal/releases/download/v[0-9]+[.][0-9]+[.][0-9]+/AkilliMuhasebe-v[0-9]+[.][0-9]+[.][0-9]+[.]apk$")) {
+                throw new IllegalArgumentException("Güvenilmeyen veya farklı paketli güncelleme adresi.");
             }
             connection = (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
@@ -738,6 +743,7 @@ public class MainActivity extends Activity {
                 target.delete();
                 throw new SecurityException("APK doğrulaması başarısız. Dosya güvenlik kontrolünden geçmedi.");
             }
+            verifyUpdateApkIdentity(target);
             File ready = target;
             runOnUiThread(() -> {
                 sendUpdateDownloadResult(true, "APK indirildi. Android kurulum ekranı açılıyor.");
@@ -748,6 +754,44 @@ public class MainActivity extends Activity {
             sendUpdateDownloadResult(false, ex.getMessage() == null ? "APK indirilemedi." : ex.getMessage());
         } finally {
             if (connection != null) connection.disconnect();
+        }
+    }
+
+    /**
+     * An update MUST match the installed package name and signing certificate.
+     * Rejects sideload/test APKs before opening Android's installer.
+     */
+    private void verifyUpdateApkIdentity(File apk) throws Exception {
+        int flags = Build.VERSION.SDK_INT >= 28
+                ? android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+                : android.content.pm.PackageManager.GET_SIGNATURES;
+        android.content.pm.PackageInfo archive =
+                getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), flags);
+        if (archive == null || !CANONICAL_PACKAGE_ID.equals(archive.packageName)
+                || !getPackageName().equals(archive.packageName)) {
+            throw new SecurityException("Paket kimliği uyuşmuyor. Yeni uygulama kurulması engellendi.");
+        }
+        android.content.pm.PackageInfo installed = getPackageManager().getPackageInfo(getPackageName(), flags);
+        android.content.pm.Signature[] appSignatures;
+        android.content.pm.Signature[] archiveSignatures;
+        if (Build.VERSION.SDK_INT >= 28) {
+            if (installed.signingInfo == null || archive.signingInfo == null) {
+                throw new SecurityException("Güncellemenin imzası okunamadı.");
+            }
+            appSignatures = installed.signingInfo.getApkContentsSigners();
+            archiveSignatures = archive.signingInfo.getApkContentsSigners();
+        } else {
+            appSignatures = installed.signatures;
+            archiveSignatures = archive.signatures;
+        }
+        if (appSignatures == null || archiveSignatures == null || appSignatures.length != 1
+                || archiveSignatures.length != 1 || !appSignatures[0].equals(archiveSignatures[0])) {
+            throw new SecurityException("İmza uyuşmazlığı. Mevcut uygulama korunuyor.");
+        }
+        long oldCode = Build.VERSION.SDK_INT >= 28 ? installed.getLongVersionCode() : installed.versionCode;
+        long newCode = Build.VERSION.SDK_INT >= 28 ? archive.getLongVersionCode() : archive.versionCode;
+        if (newCode <= oldCode) {
+            throw new IllegalStateException("Aynı veya daha eski sürüm yüklenemez.");
         }
     }
 
@@ -1097,7 +1141,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "1.2.4";
+                return "1.2.5";
             }
         }
 

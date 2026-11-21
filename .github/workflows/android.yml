@@ -105,7 +105,10 @@ jobs:
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
           echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Imzalama anahtarini kontrol et
+      - name: Tek uygulama / tek paket dagitim politikasini test et
+        run: python3 .github/scripts/release_policy_tests.py
+
+      - name: Kalici imza anahtarini kontrol et
         id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -115,77 +118,80 @@ jobs:
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "Signing secrets are not configured; only a debug APK will be built."
+            echo "::warning::Kalici imzalama GitHub Actions secrets icinde bulunamadi. IMZASIZ derleme olusacak; APK olarak dagitilmayacak."
           else
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/akilli-muhasebe-release.jks"
-            test -s "$RUNNER_TEMP/akilli-muhasebe-release.jks"
-            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/akilli-muhasebe-release.jks" >> "$GITHUB_ENV"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/akilli-release.jks"
+            chmod 600 "$RUNNER_TEMP/akilli-release.jks"
+            test -s "$RUNNER_TEMP/akilli-release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/akilli-release.jks" >> "$GITHUB_ENV"
             echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
             echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
             echo "available=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Imzali APK derle
+      - name: SADECE resmî kararlı APK'yi derle
+        run: |
+          gradle --no-daemon clean assembleRelease
+          test -d app/build/outputs/apk/release
+          test ! -d app/build/outputs/apk/installfix
+          test ! -d app/build/outputs/apk/debug
+
+      - name: Kalici imzali APK'nin kimligini ve sertifikasini dogrula
         if: steps.signing.outputs.available == 'true'
         run: |
-          gradle --no-daemon clean assembleRelease assembleInstallfix
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
-          cp app/build/outputs/apk/installfix/app-installfix.apk "dist/AkilliMuhasebe-v${APP_VERSION}-KURULUM.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}-KURULUM.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          cp "$APK" "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+          TARGET="dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$TARGET" > "$RUNNER_TEMP/certificate-check.txt"
+          grep -q "2361a76413916f19f0a0ccf5530a0d5213b88c2c2600cf598b49239d7d37adf5" "$RUNNER_TEMP/certificate-check.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$TARGET" | grep -q "^package: name='com.tugunal.akillimuhasebe.stable' versionCode='20' versionName='1.2.5'"
+          test "$(find dist -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
+          echo "OK: Tek uygulama kimligi + kalici imza + tek APK dogrulandi."
 
-      - name: Imza anahtari henuz ayarlanmadiysa test APK derle
+      - name: Imza anahtari yoksa YALNIZCA imzasiz derleme girdisini sakla
         if: steps.signing.outputs.available != 'true'
         run: |
-          gradle --no-daemon clean assembleDebug
-          mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/AkilliMuhasebe-v${APP_VERSION}-DENEME.apk"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}-DENEME.apk"
-
-      - name: Yeni paket icin imzasiz Android release ve guvenilir imzalama araclarini hazirla
-        if: steps.signing.outputs.available != 'true'
-        run: |
-          gradle --no-daemon assembleRelease assembleInstallfix
           mkdir -p signing-input
-          cp app/build/outputs/apk/release/app-release-unsigned.apk signing-input/AkilliMuhasebe-v${APP_VERSION}-STABLE-UNSIGNED.apk
-          cp app/build/outputs/apk/installfix/app-installfix-unsigned.apk signing-input/AkilliMuhasebe-v${APP_VERSION}-KURULUM-UNSIGNED.apk
+          test -s app/build/outputs/apk/release/app-release-unsigned.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "signing-input/AkilliMuhasebe-v${APP_VERSION}-UNSIGNED.apk"
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" signing-input/apksigner.jar
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" signing-input/zipalign
           chmod 755 signing-input/zipalign
+          echo "::warning::Kurulabilir APK uretilmedi. Her kullaniciya tek paket icin kalici sertifika gereklidir."
 
-      - name: Harici imzalama girdilerini indirilebilir yap
+      - name: Imzasiz paket girdilerini korumali artifact olarak yukle
         if: steps.signing.outputs.available != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-signing-input
+          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-SIGNING-INPUT-NOT-INSTALLABLE
           path: signing-input/*
           if-no-files-found: error
           retention-days: 7
 
-      - name: APK dosyasini artifact olarak yukle
+      - name: SADECE imzali resmî APK'yi yayin artifacti yap
+        if: steps.signing.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-apk
-          path: dist/*.apk
+          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-SIGNED-STABLE-APK
+          path: dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
-      - name: Kararli surumu GitHub Releases alanina yayinla
+      - name: Tek paketli kararlı sürümü GitHub Releases'a yayımla
         if: steps.signing.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Release:'))
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.value }}
           name: Akilli Muhasebe v${{ steps.version.outputs.value }}
           target_commitish: ${{ github.sha }}
-          files: |
-            dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
-            dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}-KURULUM.apk
+          files: dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
           make_latest: true
           draft: false
           prerelease: false
           body: |
-            Akilli Muhasebe v${{ steps.version.outputs.value }}.
-            Android uygulama ici guncelleme denetimi ve APK kurulum akisi eklendi.
-            Ilk kez bu imzali surume geciyorsan eski surumde yedek al; onceki test APK imzasi farkli oldugu icin ilk geciste kaldirip yeniden kurman gerekebilir.
+            Bu sürüm yalnızca com.tugunal.akillimuhasebe.stable paketini günceller.
+            Farklı eski deneme/kurulum uygulamalarını otomatik kaldıramaz.
+            Önce her eski uygulamanın şifreli yedeğini alın ve verilerin taşındığını kontrol edin.
