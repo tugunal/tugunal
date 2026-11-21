@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - akilli-muhasebe
+      - akilli-muhasebe-v1.2.7-stabilization
   workflow_dispatch:
 
 permissions:
