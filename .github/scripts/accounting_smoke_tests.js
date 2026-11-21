@@ -8,7 +8,7 @@ const sources=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(sources,[
   "document_parser.js","ubl_parser.js","js/accounting_rules.js","js/app_model.js","js/app_main.js",
   "js/app_records.js","js/app_reports.js","js/app_bank.js","js/app_documents.js",
-  "js/app_stock.js","js/workspace.js","js/app_init.js"
+  "js/app_stock.js","js/workspace.js","js/auth_flow.js","js/app_init.js"
 ],"scripts must load in dependency order");
 for(const path of sources)assert.ok(fs.existsSync(root+path),"missing "+path);
 for(const path of sources)new Function(fs.readFileSync(root+path,"utf8"));
@@ -125,7 +125,12 @@ assert.ok(registrationSource.includes("if(hasPin)"),"existing device PIN authori
 assert.ok(registrationSource.includes("userProfiles.push(profile)"),"additional local profile support missing");
 assert.ok(html.includes('id="pinLoginPanel"'),"existing PIN login remains available");
 assert.ok(/id="pinInput"[^>]*inputmode="text"/.test(html),"login keyboard must allow letters and numbers");
-assert.ok(html.includes('Harf ve rakam içeren parolanızı girin'),"login placeholder must explain alphanumeric password");
+assert.ok(html.includes('id="loginIdentifier"'),"username, email and phone identifier field missing");
+assert.ok(html.includes('Kullanıcı adı, e-posta (Hotmail) veya telefon'),"email or phone login label missing");
+assert.ok(html.includes('id="regUsername"'),"new registration username field missing");
+assert.ok(html.includes('id="regExistingPin"'),"existing user migration requires existing device PIN");
+assert.ok(html.includes('id="profileUsername"'),"profile username must be visible");
+assert.ok(!html.includes('Harf ve rakam içeren parolanızı girin'),"old login placeholder must be updated");
 assert.ok(html.includes('id="workflow"'),"workflow view missing");
 assert.ok(html.includes('id="inventory"'),"inventory view missing");
 assert.ok(html.includes('id="globalCompanySelect"'),"global company selector missing");
@@ -163,4 +168,29 @@ assert.equal(expr("typeof exportBankCsv"),"function");
 assert.equal(expr("typeof exportStockCsv"),"function");
 assert.equal(expr("typeof changeSecurityPin"),"function");
 
-console.log("PASS: modular flows, offline UBL, security, PIN change, XML input, CSV exports, vouchers, bank matching, inventory and multi-company isolation");
+
+assert.ok(nativeSource.includes("public String hasLocalAccounts()"),"local auth registry missing");
+assert.ok(nativeSource.includes("public String registerLocalAccount("),"native signup missing");
+assert.ok(nativeSource.includes("public String authenticateLocalAccount("),"native identifier+password login missing");
+assert.ok(nativeSource.includes("public String updateLocalAccountContact("),"profile contact changes must update login identities");
+assert.ok(nativeSource.includes("public String changeLocalAccountPassword("),"per-user password change missing");
+assert.ok(nativeSource.includes("derivePinHash(password, salt)"),"passwords must have salted PBKDF2 hashes");
+assert.ok(nativeSource.includes("encryptLocalData(accounts.toString())"),"auth registry must be Keystore encrypted");
+assert.ok(nativeSource.includes("activeLocalUsername"),"native account binding missing");
+assert.ok(!nativeSource.includes('put("password"'),"plain-text password storage forbidden");
+assert.equal(expr("validAuthUsername('test_user-3')"),true);
+assert.equal(expr("validAuthUsername('ab')"),false);
+assert.equal(expr("validAuthEmail('ornek@hotmail.com')"),true);
+assert.equal(expr("validAuthEmail('yanlis-at-eposta')"),false);
+assert.equal(expr("normalizeAuthPhone('0543 111 22 33')"),"5431112233");
+assert.equal(expr("normalizeAuthPhone('+90 (543) 111 22 33')"),"5431112233");
+assert.equal(expr("sameProfileIdentity({username:'Kisi_1',email:'Kisi@Hotmail.com',phone:'0543 111 22 33'},'KISI_1')"),true);
+assert.equal(expr("sameProfileIdentity({username:'Kisi_1',email:'Kisi@Hotmail.com',phone:'0543 111 22 33'},'kisi@hotmail.com')"),true);
+assert.equal(expr("sameProfileIdentity({username:'Kisi_1',email:'Kisi@Hotmail.com',phone:'0543 111 22 33'},'+905431112233')"),true);
+assert.equal(expr("duplicateAppAccount([{id:1,username:'kisi',email:'kisi@hotmail.com',phone:'05431112233'}],'yeni','kisi@hotmail.com','',0)"),true);
+assert.equal(expr("duplicateAppAccount([{id:1,username:'kisi',email:'kisi@hotmail.com',phone:'05431112233'}],'yeni','yeni@hotmail.com','05554443322',0)"),false);
+assert.equal(expr("typeof submitPin"),"function");
+assert.equal(expr("typeof submitRegistration"),"function");
+assert.equal(expr("typeof loginLegacyAccount"),"function");
+
+console.log("PASS: accounting, bank, XML, username/Hotmail/phone login, password hashing checks, migration and single APK policy");

@@ -256,3 +256,20 @@ güncel mevzuat kontrolleri ve fiziksel cihaz denemeleri gereklidir.
 - Telefona farklı kimlikle yüklenen önceki uygulamalar otomatik silinemez. Her eski kopyanın **Ayarlar -> Şifreli Yedek** dosyasını al, tek resmî uygulamaya yükle ve kayıtları doğrula. Diğerlerini sadece kullanıcı onayıyla kaldır.
 
 ÖNEMLİ: `.deneme` cihazında veri varsa `.stable` APK o veriyi otomatik göremez; Android uygulama yalıtımı bunun için vardır. Yeni APK tek başına eskilerin simgelerini kaldırmaz. Bu bir defalık kontrollü veri taşıma gerektirir.
+
+
+## v1.2.6 – Kullanıcı adı, e-posta/Hotmail veya telefonla giriş
+
+- Giriş ekranında **kullanıcı adı / e-posta / telefon + hesap şifresi**.
+- Yeni kayıt formunda zorunlu ve benzersiz **kullanıcı adı (3–30 karakter)**.
+- Her yerel kullanıcı kendi 8–64 karakterli şifresini oluşturur.
+- Şifreler muhasebe veri tabanına düz metin yazılmaz. Android Keystore ile şifrelenen hesap sicilinde, hesap başına ayrı tuzla PBKDF2-SHA256 özeti tutulur.
+- Telefon girdisinde `05xx`, `5xx`, `+90 5xx` biçimleri aynı Türkiye numarası olarak karşılaştırılır. E-postalar büyük/küçük harfe duyarsız eşleştirilir; Hotmail, Outlook, Gmail gibi geçerli e-posta sağlayıcıları desteklenir.
+- Kayıt formunda aynı kullanıcı adı, e-posta veya telefonun yeniden kaydı engellenir.
+- Hatalı şifre denemelerinde kısa süreli deneme sınırı uygulanır.
+- Eski PIN kullanan kayıtlar silinmez. Eski e-posta/telefon ve PIN ile güvenli geçiş yapılır; henüz kullanıcı adı olmayan eski hesap ilk geçişte kullanıcı adı belirler.
+- Cihazda daha önce bir ana PIN varsa, başka bir yerel kullanıcı hesabı oluştururken bu PIN'in yetkilendirme için girilmesi gerekir. Yeni hesap kendi giriş şifresini kullanır.
+- Ayarlarda kullanıcı adı gösterilir, iletişim bilgileri hesap giriş siciliyle birlikte değiştirilir ve kullanıcı hesabının şifresi değiştirilebilir.
+- BU SÜRÜM **yerel/çevrimdışı giriş** sağlar; Microsoft/Hotmail hesabına bağlanmaz, e-posta doğrulaması, şifre sıfırlama e-postası veya farklı cihazda otomatik senkronizasyon sağlamaz.
+- Aynı cihazdaki kullanıcı profilleri, mevcut cihaz verisi üzerinde çalışır; rol bazlı muhasebe veri yetkilendirmesi henüz uygulanmamıştır.
+- Resmî uygulama paket kimliği değişmez: `com.tugunal.akillimuhasebe.stable`. Her sürüm önceki kalıcı imzayla imzalanır.

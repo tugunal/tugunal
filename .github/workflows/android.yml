@@ -147,7 +147,7 @@ jobs:
           TARGET="dist/AkilliMuhasebe-v${APP_VERSION}.apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$TARGET" > "$RUNNER_TEMP/certificate-check.txt"
           grep -q "2361a76413916f19f0a0ccf5530a0d5213b88c2c2600cf598b49239d7d37adf5" "$RUNNER_TEMP/certificate-check.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$TARGET" | grep -q "^package: name='com.tugunal.akillimuhasebe.stable' versionCode='20' versionName='1.2.5'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$TARGET" | grep -q "^package: name='com.tugunal.akillimuhasebe.stable' versionCode='21' versionName='1.2.6'"
           test "$(find dist -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
           echo "OK: Tek uygulama kimligi + kalici imza + tek APK dogrulandi."
 

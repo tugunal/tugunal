@@ -16,7 +16,7 @@ def demand(test: bool, message: str) -> None:
 
 package_ids = re.findall(r'^\s*applicationId\s+"([^"]+)"', GRADLE, re.M)
 demand(package_ids == [APP_ID], f"One canonical applicationId required: {package_ids}")
-demand('versionCode 20' in GRADLE and 'versionName "1.2.5"' in GRADLE,
+demand('versionCode 21' in GRADLE and 'versionName "1.2.6"' in GRADLE,
        "Release version number is missing or wrong")
 demand("applicationIdSuffix \".internal\"" in GRADLE,
        "Debug builds must use internal (non-release) identity")

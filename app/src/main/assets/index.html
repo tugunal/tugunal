@@ -19,8 +19,17 @@
   <div class="register-brand">▤</div><h2>Akıllı Muhasebe</h2>
   <p class="muted" id="lockText">Devam etmek için PIN kodunuzu girin.</p>
   <button class="tag" type="button" onclick="showAuthChoice('welcome')">← Geri</button>
-  <div class="field"><label for="pinInput">Giriş parolası / PIN</label><input id="pinInput" type="password" inputmode="text" autocapitalize="none" spellcheck="false" autocomplete="current-password" maxlength="32" placeholder="Harf ve rakam içeren parolanızı girin"></div>
-  <button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button>
+  <form id="loginForm" onsubmit="submitPin();return false">
+   <div class="field"><label for="loginIdentifier">Kullanıcı adı, e-posta (Hotmail) veya telefon *</label>
+    <input id="loginIdentifier" required type="text" inputmode="email" autocapitalize="none" spellcheck="false"
+      autocomplete="username" maxlength="140" placeholder="Kullanıcı adı / ornek@hotmail.com / 05xx..."></div>
+   <div class="field"><label for="pinInput">Şifre *</label>
+    <input id="pinInput" required type="password" inputmode="text" autocapitalize="none" spellcheck="false"
+      autocomplete="current-password" maxlength="64" placeholder="Şifrenizi girin"></div>
+   <button class="btn" style="width:100%" id="pinButton" type="submit">Giriş yap</button>
+  </form>
+  <button class="tag" type="button" id="legacyLoginButton" onclick="loginLegacyAccount()" style="margin-top:10px">Eski kayıtlarımı PIN ile bağla</button>
+  
   <p id="pinError" class="dangertext muted" role="alert"></p>
   <p class="muted" style="text-align:center;margin-top:15px">Bu cihazdaki şifreli muhasebe kayıtlarınıza güvenli erişim.</p>
  </div>
@@ -29,21 +38,24 @@
   <div class="register-brand">▤</div>
   <div class="register-kicker">İLK KULLANIM • KULLANICI KAYDI</div>
   <h2>Hesabını oluştur</h2>
-  <p class="muted">Kullanıcı bilgilerini ve bu cihaz için güvenlik PIN'ini belirle.</p>
+  <p class="muted">Kullanıcı adı, e-posta veya telefonla giriş yapabilmek için bilgilerini ve kendi şifreni belirle.</p>
   <form id="registrationForm" onsubmit="return submitRegistration(event)">
    <div class="formgrid">
     <div class="field"><label for="regFirstName">Ad *</label><input id="regFirstName" required maxlength="60" autocomplete="given-name" placeholder="Adınız"></div>
     <div class="field"><label for="regLastName">Soyad *</label><input id="regLastName" required maxlength="60" autocomplete="family-name" placeholder="Soyadınız"></div>
-    <div class="field"><label for="regEmail">E-posta *</label><input id="regEmail" type="email" required maxlength="120" autocomplete="email" placeholder="ornek@firma.com"></div>
+    <div class="field"><label for="regUsername">Kullanıcı adı *</label><input id="regUsername" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]{3,30}" autocapitalize="none" spellcheck="false" autocomplete="username" placeholder="ornek_kullanici"></div>
+    <div class="field"><label for="regEmail">E-posta *</label><input id="regEmail" type="email" required maxlength="120" autocomplete="email" placeholder="ornek@hotmail.com"></div>
     <div class="field"><label for="regPhone">Telefon</label><input id="regPhone" type="tel" maxlength="24" autocomplete="tel" placeholder="05xx xxx xx xx"></div>
     <div class="field"><label for="regRole">Kullanıcı türü *</label><select id="regRole" required><option value="">Seçiniz</option><option value="accountant">Serbest muhasebeci mali müşavir</option><option value="business_owner">İşletme sahibi</option><option value="finance">Muhasebe / finans personeli</option><option value="employee">Personel</option><option value="other">Diğer</option></select></div>
     <div class="field"><label for="regOffice">İşletme / Büro adı</label><input id="regOffice" maxlength="120" autocomplete="organization" placeholder="İşletme veya büro adı"></div>
    </div>
    <div class="register-security">
-    <b>Bu cihazın güvenlik PIN'i</b>
+    <b>Hesap şifreniz</b>
     <div class="formgrid">
-     <div class="field"><label for="regPin">PIN (6–32 karakter) *</label><input id="regPin" type="password" required minlength="6" maxlength="32" autocomplete="new-password" placeholder="Yeni PIN"></div>
-     <div class="field"><label for="regPinConfirm">PIN tekrar *</label><input id="regPinConfirm" type="password" required minlength="6" maxlength="32" autocomplete="new-password" placeholder="PIN'i tekrar yazın"></div>
+     <div class="field"><label for="regPin">Şifre (8–64 karakter) *</label><input id="regPin" type="password" inputmode="text" required minlength="8" maxlength="64" autocomplete="new-password" placeholder="Yeni şifre"></div>
+     <div class="field"><label for="regPinConfirm">Şifre tekrar *</label><input id="regPinConfirm" type="password" inputmode="text" required minlength="8" maxlength="64" autocomplete="new-password" placeholder="Şifreyi tekrar yazın"></div>
+     <div class="field full hidden" id="existingPinField"><label for="regExistingPin">Mevcut cihaz PIN'i (yeni kullanıcı yetkisi) *</label>
+      <input id="regExistingPin" type="password" inputmode="text" autocomplete="off" placeholder="Eski cihaz PIN'i / ana şifre"></div>
     </div>
    </div>
    <label class="register-consent"><input id="regLocalConsent" type="checkbox" required><span>Bilgilerimin bu cihazda şifreli olarak saklanacağını ve bu kayıt ekranının çevrimdışı kullanıcı profili oluşturduğunu anladım. Bu işlem çevrimiçi hesap veya e-posta doğrulaması oluşturmaz.</span></label>
@@ -83,7 +95,7 @@
 </aside>
 <div class="workspace">
 <header>
-  <div class="toprow"><small>AKILLI MUHASEBE • v1.2.5</small><span class="pill" id="companyStatusPill">● Cihazda kayıt</span></div>
+  <div class="toprow"><small>AKILLI MUHASEBE • v1.2.6</small><span class="pill" id="companyStatusPill">● Cihazda kayıt</span></div>
   <h1 id="currentViewTitle">Genel Bakış</h1>
   <small><span id="companyTitle">Mali Durum Özeti</span> · <span id="today"></span></small>
   <div class="global-company-bar"><label for="globalCompanySelect">Çalışılan firma</label>
@@ -103,7 +115,7 @@
 <div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
 </div>
 <div class="panel update-card" style="margin-top:12px">
-  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v1.2.5</span></div>
+  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v1.2.6</span></div>
   <p class="muted" id="updateStatus">Yeni sürüm kontrolü yapılmadı.</p>
   <div class="toolbar">
     <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
@@ -316,6 +328,7 @@
 <div class="panel" id="userProfilePanel">
  <p class="muted">Uygulamayı kullanan kişinin iletişim ve görev bilgileri.</p>
  <div class="formgrid">
+  <div class="field"><label for="profileUsername">Kullanıcı adı</label><input id="profileUsername" readonly autocomplete="username"></div>
   <div class="field"><label for="profileFirstName">Ad</label><input id="profileFirstName" maxlength="60"></div>
   <div class="field"><label for="profileLastName">Soyad</label><input id="profileLastName" maxlength="60"></div>
   <div class="field"><label for="profileEmail">E-posta</label><input id="profileEmail" type="email" maxlength="120"></div>
@@ -331,8 +344,8 @@
 </div><div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
 <button class="btn" onclick="saveSettings()">Kaydet</button><hr>
 <div class="panel" style="margin-bottom:12px"><b>PIN güvenliği</b>
-<p class="muted">PIN kodunu değiştirmek kayıtları silmez. Mevcut PIN gereklidir.</p>
-<button class="btn secondary" onclick="changeSecurityPin()">PIN kodunu değiştir</button></div>
+<p class="muted">Hesap şifrenizi değiştirmek muhasebe kayıtlarını silmez. Mevcut şifreniz gerekir.</p>
+<button class="btn secondary" onclick="changeSecurityPin()">Hesap şifresini değiştir</button></div>
 <div id="recoveryWarning" class="notice hidden" style="color:#9f1239;border-color:#f2b8c6;margin-bottom:12px"><b>Veri koruma modu</b><p>Şifreli yerel kayıt okunamadı. Eski kayıtların üzerine yazılmadı. Buradan daha önce aldığın şifreli yedeği geri yükle. Yedek olmadan uygulamayı kaldırma.</p></div><div class="notice">Yedek dosyası parola ile şifrelenir. Yedekleme parolasını unutmayın; parola olmadan yedek açılamaz. <b>Yeni sürüme geçmeden önce yedeği oluşturup doğrulayın.</b></div>
 <div class="section"><h2>Uygulama güncellemesi</h2></div>
 <div class="panel">
@@ -346,7 +359,7 @@
 <div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
 <hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
 <button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
-<p class="muted">Sürüm <span id="appVersionText">1.2.5</span> • Cihazda şifreli kayıt • Resmî gönderim etkin değil</p>
+<p class="muted">Sürüm <span id="appVersionText">1.2.6</span> • Cihazda şifreli kayıt • Resmî gönderim etkin değil</p>
 </div></section>
 </main>
 
@@ -374,5 +387,6 @@
 <script src="js/app_documents.js"></script>
 <script src="js/app_stock.js"></script>
 <script src="js/workspace.js"></script>
+<script src="js/auth_flow.js"></script>
 <script src="js/app_init.js"></script>
 </body></html>

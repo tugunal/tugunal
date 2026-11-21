@@ -69,6 +69,11 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 public class MainActivity extends Activity {
     private static final String CANONICAL_PACKAGE_ID = "com.tugunal.akillimuhasebe.stable";
     private static final String PREFS = "akilli_muhasebe_secure";
+    private static final String LOCAL_ACCOUNTS_KEY = "encrypted_auth_accounts_v1";
+    private volatile String activeLocalUsername = "";
+    private volatile int failedAccountAttempts = 0;
+    private volatile long accountLockUntil = 0L;
+
     private static final String KEY_ALIAS = "akilli_muhasebe_local_data_key";
     private static final int FILE_PICKER_REQUEST = 4107;
     private static final int EMBEDDED_CAMERA_REQUEST = 4108;
@@ -321,6 +326,60 @@ public class MainActivity extends Activity {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, getOrCreateEncryptionKey(), new GCMParameterSpec(128, iv));
         return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+    }
+
+    /** Credentials are encrypted with the Android Keystore, with per-account salted PBKDF2 hashes. */
+    private JSONArray readLocalAccounts() throws Exception {
+        String encrypted = getSharedPreferences(PREFS, MODE_PRIVATE).getString(LOCAL_ACCOUNTS_KEY, "");
+        return encrypted.isEmpty() ? new JSONArray() : new JSONArray(decryptLocalData(encrypted));
+    }
+
+    private static String normalizeAccountName(String name) {
+        return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizePhoneNumber(String phone) {
+        if (phone == null || phone.trim().isEmpty()) return "";
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.startsWith("0090") && digits.length() == 14) digits = digits.substring(4);
+        if (digits.startsWith("90") && digits.length() == 12) digits = digits.substring(2);
+        if (digits.startsWith("0") && digits.length() == 11) digits = digits.substring(1);
+        return digits;
+    }
+
+    private static boolean isAccountNameValid(String name) {
+        return name != null && name.matches("[a-zA-Z0-9._-]{3,30}");
+    }
+
+    private static boolean isEmailValid(String email) {
+        return email != null && email.length() <= 120 &&
+                email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    }
+
+    private static boolean isPhoneValid(String normalizedPhone) {
+        return normalizedPhone == null || normalizedPhone.isEmpty() ||
+                normalizedPhone.matches("[0-9]{10,15}");
+    }
+
+    private int findLocalAccountIndex(JSONArray accounts, String identifier) {
+        String key = normalizeAccountName(identifier);
+        String phoneKey = normalizePhoneNumber(identifier);
+        for (int i = 0; i < accounts.length(); i++) {
+            JSONObject account = accounts.optJSONObject(i);
+            if (account == null) continue;
+            if (key.equals(account.optString("username", "")) ||
+                    key.equals(account.optString("email", "")) ||
+                    (!phoneKey.isEmpty() && phoneKey.equals(account.optString("phone", "")))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean storeLocalAccounts(JSONArray accounts) throws Exception {
+        String encrypted = encryptLocalData(accounts.toString());
+        return getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putString(LOCAL_ACCOUNTS_KEY, encrypted).commit();
     }
 
     private byte[] derivePinHash(String pin, byte[] salt) throws Exception {
@@ -897,6 +956,142 @@ public class MainActivity extends Activity {
 
     public class SecureBridge {
         @JavascriptInterface
+        public String hasLocalAccounts() {
+            try { return readLocalAccounts().length() > 0 ? "true" : "false"; }
+            catch (Exception ex) { return "error"; }
+        }
+
+        @JavascriptInterface
+        public String currentLocalUser() {
+            return nativeUnlocked ? activeLocalUsername : "";
+        }
+
+        /** Requires an unlocked device during registration. Passwords are never stored in the JavaScript database. */
+        @JavascriptInterface
+        public String registerLocalAccount(String username, String email, String phone, String password) {
+            if (!nativeUnlocked) return "locked";
+            String u = normalizeAccountName(username);
+            String e = normalizeAccountName(email);
+            String normalizedPhone = normalizePhoneNumber(phone);
+            if (!isAccountNameValid(u) || !isEmailValid(e) || !isPhoneValid(normalizedPhone) ||
+                    password == null || password.length() < 8 || password.length() > 64) return "invalid";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                if (findLocalAccountIndex(accounts, u) >= 0 ||
+                        findLocalAccountIndex(accounts, e) >= 0 ||
+                        (!normalizedPhone.isEmpty() && findLocalAccountIndex(accounts, normalizedPhone) >= 0))
+                    return "duplicate";
+                byte[] salt = new byte[16];
+                new SecureRandom().nextBytes(salt);
+                JSONObject account = new JSONObject();
+                account.put("username", u);
+                account.put("email", e);
+                account.put("phone", normalizedPhone);
+                account.put("salt", Base64.getEncoder().encodeToString(salt));
+                account.put("hash", Base64.getEncoder().encodeToString(derivePinHash(password, salt)));
+                accounts.put(account);
+                if (!storeLocalAccounts(accounts)) return "error";
+                activeLocalUsername = u;
+                return "ok";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        /** Verify username OR email OR phone together with this user's own password. */
+        @JavascriptInterface
+        public String authenticateLocalAccount(String identifier, String password) {
+            nativeUnlocked = false;
+            activeLocalUsername = "";
+            if (System.currentTimeMillis() < accountLockUntil) return "rate_limited";
+            if (identifier == null || identifier.length() > 140 || password == null ||
+                    password.length() > 64) return "invalid";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                if (accounts.length() == 0) return "no_accounts";
+                int idx = findLocalAccountIndex(accounts, identifier);
+                if (idx < 0) return recordFailedAccountLogin();
+                JSONObject account = accounts.optJSONObject(idx);
+                if (account == null) return recordFailedAccountLogin();
+                byte[] salt = Base64.getDecoder().decode(account.getString("salt"));
+                byte[] expected = Base64.getDecoder().decode(account.getString("hash"));
+                if (!MessageDigest.isEqual(expected, derivePinHash(password, salt)))
+                    return recordFailedAccountLogin();
+                failedAccountAttempts = 0;
+                accountLockUntil = 0L;
+                activeLocalUsername = account.optString("username", "");
+                nativeUnlocked = true;
+                return "ok";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        private String recordFailedAccountLogin() {
+            failedAccountAttempts++;
+            if (failedAccountAttempts >= 5) {
+                accountLockUntil = System.currentTimeMillis() + 30000L;
+                failedAccountAttempts = 0;
+                return "rate_limited";
+            }
+            return "invalid";
+        }
+
+        @JavascriptInterface
+        public String changeLocalAccountPassword(String oldPassword, String newPassword) {
+            if (!nativeUnlocked || activeLocalUsername.isEmpty() || oldPassword == null ||
+                    newPassword == null || newPassword.length() < 8 || newPassword.length() > 64)
+                return "invalid";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                int idx = findLocalAccountIndex(accounts, activeLocalUsername);
+                if (idx < 0) return "not_found";
+                JSONObject account = accounts.getJSONObject(idx);
+                byte[] salt = Base64.getDecoder().decode(account.getString("salt"));
+                byte[] currentHash = Base64.getDecoder().decode(account.getString("hash"));
+                if (!MessageDigest.isEqual(currentHash, derivePinHash(oldPassword, salt)))
+                    return "invalid_old";
+                byte[] newSalt = new byte[16];
+                new SecureRandom().nextBytes(newSalt);
+                account.put("salt", Base64.getEncoder().encodeToString(newSalt));
+                account.put("hash", Base64.getEncoder().encodeToString(derivePinHash(newPassword, newSalt)));
+                return storeLocalAccounts(accounts) ? "ok" : "error";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        /** Keeps phone/e-mail identifiers synchronized with profile edits. */
+        @JavascriptInterface
+        public String updateLocalAccountContact(String username, String email, String phone) {
+            if (!nativeUnlocked || !normalizeAccountName(username).equals(activeLocalUsername))
+                return "locked";
+            String e = normalizeAccountName(email);
+            String normalizedPhone = normalizePhoneNumber(phone);
+            if (!isEmailValid(e) || !isPhoneValid(normalizedPhone)) return "invalid";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                int idx = findLocalAccountIndex(accounts, activeLocalUsername);
+                if (idx < 0) return "not_found";
+                for (int i = 0; i < accounts.length(); i++) {
+                    if (i == idx) continue;
+                    JSONObject other = accounts.optJSONObject(i);
+                    if (other == null) continue;
+                    if (e.equals(other.optString("email", "")) ||
+                        e.equals(other.optString("username", "")) ||
+                        (!normalizedPhone.isEmpty() && normalizedPhone.equals(other.optString("phone", ""))))
+                        return "duplicate";
+                }
+                JSONObject account = accounts.getJSONObject(idx);
+                account.put("email", e);
+                account.put("phone", normalizedPhone);
+                return storeLocalAccounts(accounts) ? "ok" : "error";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        @JavascriptInterface
         public String hasPin() {
             return getSharedPreferences(PREFS, MODE_PRIVATE).contains("pin_hash") ? "true" : "false";
         }
@@ -1109,7 +1304,7 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void lockNative() { nativeUnlocked = false; }
+        public void lockNative() { nativeUnlocked = false; activeLocalUsername = ""; }
 
         @JavascriptInterface
         public String changePin(String oldPin, String newPin) {
@@ -1141,7 +1336,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "1.2.5";
+                return "1.2.6";
             }
         }
 
