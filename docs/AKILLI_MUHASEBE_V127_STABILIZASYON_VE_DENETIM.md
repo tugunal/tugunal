@@ -27,6 +27,18 @@
 - **Şifreli veritabanı bozulması:** Doğrulanmış kullanıcı için kurtarma ekranı açılır; kayıtların üzerine otomatik boş veritabanı yazılmaz.
 - **Regresyon testi:** Yeni ve eski hesap, farklı e-posta/telefon biçimleri, yanlış şifre, başarısız profil yazımı, başarısız kullanıcı kaydı, eski PIN geçişi ve şifreli veri kurtarma senaryoları eklenmiştir.
 
+## Ek veri bütünlüğü düzeltmeleri — 21 Kasım 2026
+
+- Son başarıyla şifrelenip kaydedilmiş muhasebe verisinin uygulama oturumu içinde bir kopyası tutulur. Native şifreli kayıt reddedilirse ekrandaki geçici değişiklik son doğrulanan veriye geri alınır; geçici kayıt gerçek kayıt gibi gösterilmez.
+- Firma, gelir/gider, fatura, cari, fiş ve diğer girişlerin başarı mesajı, `persist()` doğrulanmadan verilmez. Başarısız kayıtta form kapanmaz.
+- Fatura OCR ön izlemesi ve belge düzenleme, şifreli belge kaydı doğrulanana kadar korunur.
+- Stok kartı, stok hareketi ve irsaliyeden stok aktarımı yalnızca başarılı şifreli kayıtta tamamlanmış gösterilir.
+- Banka ekstresi ön izlemesi başarısız kayıtta kaybolmaz; mutabakat önerisi başarı mesajı doğrulanmış kayda bağlıdır.
+- Şifreli yedek geri yükleme sonucu Android'e kalıcı yazıldıktan sonra yeni doğrulanmış veri anlık görüntüsü belirlenir. Ek taşıma kaydı başarısız olursa geri yüklenen orijinal içeriğe dönülür.
+- GitHub Actions eşzamanlı aynı dal derlemelerinde yalnızca en yeni çalışmayı yetkili kabul edecek şekilde gruplandırılır; eski derlemelerin iptal edilmesi yanlış/stale dağıtımı azaltır.
+- Muhasebe regresyon testlerine şifreli yerel saklamanın başarısız olduğu senaryoda geçici gelir-gider hareketinin geri alınması eklendi.
+- Finansal verilerin gerçek cihazda kalıcı kayıt doğrulaması hâlâ tamamlanmadı; bu düzeltmeler kaynak ve test seviyesindedir.
+
 ## Kontrol ve kanıt — 21 Kasım 2026
 
 - Kullanıcı tarafından sağlanan v1.2.6 APK SHA-256: `31f7874a0a290c2938fda27bfd1c000e605cb4901e674713b8da57be04f474a8`.
