@@ -1,57 +1,178 @@
 <!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#0b1830"><title>Akıllı Muhasebe</title>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1830"><title>Akıllı Muhasebe</title>
 <style>
 :root{--navy:#0b1830;--blue:#2563eb;--bg:#f3f6fb;--muted:#64748b;--line:#e5eaf2;--green:#0f9f6e;--red:#dc4c4c}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:#17243a}button,input,select{font:inherit}header{background:linear-gradient(135deg,#0b1830,#183b70);color:white;padding:22px 18px 26px;border-radius:0 0 24px 24px}header small{opacity:.72}header h1{margin:7px 0 4px;font-size:23px}.toprow{display:flex;justify-content:space-between;align-items:center}.pill{background:#ffffff20;border:1px solid #ffffff40;color:white;padding:7px 11px;border-radius:20px;font-size:12px}.container{padding:15px 14px 95px;max-width:720px;margin:auto}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:-4px}.card,.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 3px 12px #10284a08}.metric small{color:var(--muted);font-size:12px}.metric strong{display:block;font-size:20px;margin-top:7px}.metric em{font-style:normal;color:var(--green);font-size:11px}.section{display:flex;justify-content:space-between;align-items:center;margin:21px 2px 10px}.section h2{font-size:16px;margin:0}.section button{border:0;background:#e7efff;color:var(--blue);border-radius:9px;padding:8px 10px;font-size:12px}.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.quick button{background:white;border:1px solid var(--line);border-radius:14px;padding:14px 6px;color:#24344d;font-size:12px}.ico{display:block;font-size:21px;margin-bottom:6px}.row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px}.row:last-child{border:0}.muted{color:var(--muted);font-size:12px}.positive{color:var(--green);font-weight:bold}.negative{color:var(--red);font-weight:bold}.nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:9px 3px max(9px,env(safe-area-inset-bottom));z-index:5}.nav button{border:0;background:none;color:#718096;font-size:10px;padding:4px}.nav button.active{color:var(--blue);font-weight:bold}.nav span{display:block;font-size:19px;margin-bottom:3px}.view{display:none}.view.active{display:block}.btn{background:var(--blue);color:white;border:0;border-radius:11px;padding:12px 15px;font-weight:bold}.btn.secondary{background:#e9effb;color:#24416e}.field{margin:12px 0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.field input,.field select{width:100%;border:1px solid #d9e1ed;border-radius:10px;padding:12px;background:white;color:#18263d}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.full{grid-column:1/-1}.hidden{display:none!important}.lock{position:fixed;inset:0;background:#0b1830;z-index:20;display:flex;align-items:center;justify-content:center;padding:25px}.lockbox{background:white;border-radius:20px;padding:24px;width:100%;max-width:360px}.lockbox h2{margin-top:0}.tag{font-size:10px;padding:4px 7px;background:#edf3ff;color:#2455a6;border-radius:8px}.empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}.danger{color:var(--red)}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{flex:1;min-width:120px}
-</style></head><body>
-<div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pin" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" onclick="submitPin()">Devam et</button><p id="pinError" class="danger muted"></p></div></div>
-<header><div class="toprow"><small>AKILLI MUHASEBE • v0.1.0</small><span class="pill">● Çevrimdışı</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,sans-serif;color:#17243a}button,input,select{font:inherit}
+header{background:linear-gradient(135deg,#0b1830,#183b70);color:white;padding:20px 18px 24px;border-radius:0 0 24px 24px}
+header small{opacity:.72}.toprow{display:flex;justify-content:space-between;align-items:center;gap:10px}header h1{margin:8px 0 4px;font-size:23px}
+.pill{background:#ffffff20;border:1px solid #ffffff40;color:white;padding:7px 11px;border-radius:20px;font-size:12px;white-space:nowrap}
+.container{padding:15px 14px 100px;max-width:760px;margin:auto}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card,.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 3px 12px #10284a08}
+.metric small{color:var(--muted);font-size:12px}.metric strong{display:block;font-size:20px;margin-top:7px;overflow-wrap:anywhere}.metric em{font-style:normal;color:var(--green);font-size:11px}
+.section{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:21px 2px 10px}.section h2{font-size:16px;margin:0}.section button{border:0;background:#e7efff;color:var(--blue);border-radius:9px;padding:8px 10px;font-size:12px}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.quick button,.modulegrid button{background:white;border:1px solid var(--line);border-radius:14px;padding:13px 6px;color:#24344d;font-size:12px}
+.ico{display:block;font-size:21px;margin-bottom:6px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px}.row:last-child{border:0}
+.muted{color:var(--muted);font-size:12px}.positive{color:var(--green);font-weight:bold}.negative{color:var(--red);font-weight:bold}
+.nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 3px max(8px,env(safe-area-inset-bottom));z-index:5}
+.nav button{border:0;background:none;color:#718096;font-size:10px;padding:4px}.nav button.active{color:var(--blue);font-weight:bold}.nav span{display:block;font-size:19px;margin-bottom:3px}
+.view{display:none}.view.active{display:block}.btn{background:var(--blue);color:white;border:0;border-radius:11px;padding:12px 15px;font-weight:bold}
+.btn.secondary{background:#e9effb;color:#24416e}.btn.danger{background:#fff0f0;color:#b42323}
+.field{margin:11px 0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.field input,.field select{width:100%;border:1px solid #d9e1ed;border-radius:10px;padding:12px;background:white;color:#18263d}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.full{grid-column:1/-1}.hidden{display:none!important}
+.lock{position:fixed;inset:0;background:#0b1830;z-index:20;display:flex;align-items:center;justify-content:center;padding:25px}
+.lockbox{background:white;border-radius:20px;padding:24px;width:100%;max-width:380px}.lockbox h2{margin-top:0}
+.tag{font-size:10px;padding:4px 7px;background:#edf3ff;color:#2455a6;border-radius:8px}.empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.dangertext{color:var(--red)}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{flex:1;min-width:125px}
+.modulegrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.modulegrid button{text-align:left;padding:14px}.modulegrid b{display:block;margin:5px 0}
+.notice{background:#fff8e8;border:1px solid #f4dfac;border-radius:12px;padding:12px;color:#76551a;font-size:12px;line-height:1.45}
+.badge{font-size:10px;border-radius:20px;padding:4px 7px;background:#eff4fb;color:#50627b}
+hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+@media(min-width:600px){.quick{grid-template-columns:repeat(6,1fr)}}
+</style>
+</head>
+<body>
+<div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
+<header><div class="toprow"><small>AKILLI MUHASEBE • v0.2.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
 <main class="container">
 <section id="dashboard" class="view active">
-<div class="cards"><div class="card metric"><small>Toplam gelir</small><strong id="totalIncome">₺0,00</strong><em>Bu dönem</em></div><div class="card metric"><small>Toplam gider</small><strong id="totalExpense">₺0,00</strong><em>Bu dönem</em></div><div class="card metric"><small>Kasa bakiyesi</small><strong id="balance">₺0,00</strong><em>Gelir - gider</em></div><div class="card metric"><small>Kayıtlı müşteri</small><strong id="customerCount">0</strong><em>Aktif kayıt</em></div></div>
-<div class="section"><h2>Hızlı işlemler</h2></div><div class="quick"><button onclick="openForm('transaction','income')"><span class="ico">＋</span>Gelir ekle</button><button onclick="openForm('transaction','expense')"><span class="ico">－</span>Gider ekle</button><button onclick="openForm('invoice')"><span class="ico">▤</span>Fatura ekle</button><button onclick="openForm('customer')"><span class="ico">♙</span>Müşteri ekle</button><button onclick="showView('reports')"><span class="ico">▥</span>Raporlar</button><button onclick="showView('calendar')"><span class="ico">▦</span>Vergi takvimi</button></div>
+<div class="cards">
+<div class="card metric"><small>Toplam gelir</small><strong id="totalIncome">₺0,00</strong><em>Kaydedilen hareketler</em></div>
+<div class="card metric"><small>Toplam gider</small><strong id="totalExpense">₺0,00</strong><em>Kaydedilen hareketler</em></div>
+<div class="card metric"><small>Net fark</small><strong id="netBalance">₺0,00</strong><em>Gelir - gider</em></div>
+<div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
+</div>
+<div class="section"><h2>Hızlı işlemler</h2></div>
+<div class="quick">
+<button onclick="openForm('transaction','income')"><span class="ico">＋</span>Gelir ekle</button>
+<button onclick="openForm('transaction','expense')"><span class="ico">－</span>Gider ekle</button>
+<button onclick="openForm('invoice')"><span class="ico">▤</span>Fatura ekle</button>
+<button onclick="openForm('customer')"><span class="ico">♙</span>Cari ekle</button>
+<button onclick="openForm('employee')"><span class="ico">♧</span>Personel ekle</button>
+<button onclick="openForm('reminder')"><span class="ico">▦</span>Hatırlatma</button>
+</div>
+<div class="section"><h2>Hesap bakiyeleri</h2><button onclick="showView('finance')">Hesaplar</button></div><div class="panel" id="accountSummary"></div>
 <div class="section"><h2>Son hareketler</h2><button onclick="showView('transactions')">Tümünü gör</button></div><div class="panel" id="recent"></div>
-<div class="section"><h2>Hatırlatmalar</h2></div><div class="panel"><div class="row"><span>Vergi ve SGK tarihlerini ekleyin</span><span class="tag">Takip</span></div><div class="row"><span>Verilerinizi düzenli yedekleyin</span><button class="tag" onclick="backup()">Yedekle</button></div></div>
+<div class="section"><h2>Yaklaşan hatırlatmalar</h2><button onclick="showView('calendar')">Takvim</button></div><div class="panel" id="upcoming"></div>
+<div class="section"><h2>Diğer modüller</h2><button onclick="showView('more')">Tüm modüller</button></div>
 </section>
+
 <section id="transactions" class="view"><div class="section"><h2>Gelir ve giderler</h2><button onclick="openForm('transaction')">+ Yeni kayıt</button></div><div class="panel" id="transactionList"></div></section>
-<section id="customers" class="view"><div class="section"><h2>Müşteriler / Firmalar</h2><button onclick="openForm('customer')">+ Ekle</button></div><div class="panel" id="customerList"></div></section>
-<section id="invoices" class="view"><div class="section"><h2>Fatura kayıtları</h2><button onclick="openForm('invoice')">+ Fatura</button></div><div class="panel" id="invoiceList"></div><p class="muted">Bu sürüm fatura taslağı ve hesap takibi yapar; resmî e-Fatura/e-Arşiv gönderimi yapmaz.</p></section>
+<section id="customers" class="view"><div class="section"><h2>Cari hesaplar</h2><button onclick="openForm('customer')">+ Cari ekle</button></div><div class="panel" id="customerList"></div></section>
+<section id="invoices" class="view"><div class="section"><h2>Fatura kayıtları</h2><button onclick="openForm('invoice')">+ Fatura</button></div><div class="panel" id="invoiceList"></div><div class="notice" style="margin-top:12px">Bu sürüm fatura taslağı ve KDV hesaplaması yapar. Resmî e-Fatura/e-Arşiv gönderimi yapmaz; bunun için yetkili entegratör ve GİB servis bağlantısı gerekir.</div></section>
+
+<section id="employees" class="view"><div class="section"><h2>Personel kayıtları</h2><button onclick="openForm('employee')">+ Personel ekle</button></div><div class="panel" id="employeeList"></div><div class="notice" style="margin-top:12px">Personel bilgileri ve bordro ön hesapları içindir. SGK bildirgesi veya resmî bordro oluşturmaz.</div></section>
+<section id="payroll" class="view"><div class="section"><h2>Bordro ön hesapları</h2><button onclick="openForm('payroll')">+ Bordro ekle</button></div><div class="panel" id="payrollList"></div><div class="notice" style="margin-top:12px">Net tutar, girilen brüt ücret + ek ödeme - kesintiler şeklinde basit ön hesaplamadır. Vergi, SGK ve teşvik hesapları resmî mevzuat hesabı değildir.</div></section>
+
+<section id="finance" class="view"><div class="section"><h2>Kasa ve banka</h2><button onclick="openForm('account')">+ Hesap ekle</button></div><div class="panel" id="financeList"></div><div class="section"><h2>Hesap hareketi</h2><button onclick="openForm('transaction')">+ Hareket ekle</button></div><p class="muted">Gelir ve gider kayıtlarında ilgili kasa veya banka hesabını seçin. Bu sürüm banka hesabına doğrudan bağlanmaz.</p></section>
+
+<section id="assets" class="view"><div class="section"><h2>Demirbaş ve varlıklar</h2><button onclick="openForm('asset')">+ Varlık ekle</button></div><div class="panel" id="assetList"></div><div class="notice" style="margin-top:12px">Amortisman tutarı doğrusal yöntemle yaklaşık bilgilendirme amacıyla hesaplanır. Vergisel kayıt öncesinde güncel mevzuat ve varlık sınıfı kontrol edilmelidir.</div></section>
+
 <section id="reports" class="view"><div class="section"><h2>Mali raporlar</h2><button onclick="exportCsv()">CSV indir</button></div><div class="panel" id="reportBody"></div></section>
-<section id="calendar" class="view"><div class="section"><h2>Vergi ve ödeme takvimi</h2><button onclick="openForm('reminder')">+ Hatırlatma</button></div><div class="panel" id="reminderList"></div><p class="muted">Tarihleri mali müşavirinizin ve resmî takvimin güncel bilgileriyle doğrulayın.</p></section>
-<section id="settings" class="view"><div class="section"><h2>Ayarlar ve yedekleme</h2></div><div class="panel"><div class="field"><label>İşletme / Büro adı</label><input id="businessName" placeholder="İşletme adı"></div><button class="btn" onclick="saveSettings()">Kaydet</button><hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><div class="toolbar"><button class="btn secondary" onclick="backup()">Yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div><p class="muted">Veriler bu cihazda şifreli saklanır. Cihazı değiştirirken yedek alıp güvenli yerde tutun.</p><button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button><p class="muted">Uygulama sürümü 0.1.0 • İnternet bağlantısı gerektirmez.</p></div></section>
+<section id="calendar" class="view"><div class="section"><h2>Vergi ve ödeme takvimi</h2><button onclick="openForm('reminder')">+ Hatırlatma</button></div><div class="panel" id="reminderList"></div><p class="muted">Vergi ve SGK son tarihlerini güncel resmî takvimden doğrulayarak ekleyin.</p></section>
+
+<section id="more" class="view"><div class="section"><h2>Modüller</h2></div><div class="modulegrid">
+<button onclick="showView('employees')"><span class="ico">♧</span><b>Personel</b><span class="muted">Çalışan kayıtları</span></button>
+<button onclick="showView('payroll')"><span class="ico">₺</span><b>Bordro ön hesap</b><span class="muted">Ücret ve kesintiler</span></button>
+<button onclick="showView('assets')"><span class="ico">▣</span><b>Demirbaşlar</b><span class="muted">Varlık ve amortisman</span></button>
+<button onclick="showView('reports')"><span class="ico">▥</span><b>Raporlar</b><span class="muted">Gelir, gider, KDV</span></button>
+<button onclick="showView('calendar')"><span class="ico">▦</span><b>Vergi takvimi</b><span class="muted">Son tarih hatırlatmaları</span></button>
+<button onclick="showView('settings')"><span class="ico">⚙</span><b>Ayarlar</b><span class="muted">Firma ve yedekleme</span></button>
+</div></section>
+
+<section id="settings" class="view"><div class="section"><h2>Ayarlar ve yedekleme</h2></div><div class="panel">
+<div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
+<button class="btn" onclick="saveSettings()">Kaydet</button><hr>
+<div class="notice">Yedek dosyası parola ile şifrelenir. Yedekleme parolasını unutmayın; parola olmadan yedek açılamaz.</div>
+<div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
+<hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
+<button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
+<p class="muted">Sürüm 0.2.0 • Çevrimdışı öncelikli</p>
+</div></section>
 </main>
-<nav class="nav"><button class="active" data-view="dashboard" onclick="showView('dashboard')"><span>⌂</span>Ana sayfa</button><button data-view="transactions" onclick="showView('transactions')"><span>↕</span>Hareketler</button><button data-view="customers" onclick="showView('customers')"><span>♙</span>Müşteriler</button><button data-view="invoices" onclick="showView('invoices')"><span>▤</span>Faturalar</button><button data-view="settings" onclick="showView('settings')"><span>⚙</span>Ayarlar</button></nav>
-<div id="modal" class="lock hidden" style="background:#071326b8;z-index:10"><div class="lockbox" style="max-height:90vh;overflow:auto"><div class="toprow"><h2 id="formTitle">Yeni kayıt</h2><button class="btn secondary" onclick="closeForm()">Kapat</button></div><div id="formBody"></div></div></div>
+
+<nav class="nav">
+<button class="active" data-view="dashboard" onclick="showView('dashboard')"><span>⌂</span>Ana sayfa</button>
+<button data-view="transactions" onclick="showView('transactions')"><span>↕</span>Hareketler</button>
+<button data-view="customers" onclick="showView('customers')"><span>♙</span>Cari</button>
+<button data-view="invoices" onclick="showView('invoices')"><span>▤</span>Faturalar</button>
+<button data-view="more" onclick="showView('more')"><span>☷</span>Diğer</button>
+</nav>
+
+<div id="modal" class="lock hidden" style="background:#071326b8;z-index:10"><div class="lockbox" style="max-height:90vh;overflow:auto">
+<div class="toprow"><h2 id="formTitle">Yeni kayıt</h2><button class="btn secondary" onclick="closeForm()">Kapat</button></div><div id="formBody"></div>
+</div></div>
+
 <script>
-const emptyDB={customers:[],transactions:[],invoices:[],reminders:[],settings:{businessName:""}};
-let db=emptyDB, unlocked=false, formKind="";
+'use strict';
+const $=id=>document.getElementById(id);
+const emptyDB={customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[{id:1,name:'Kasa',kind:'cash',opening:0},{id:2,name:'Banka',kind:'bank',opening:0}],assets:[],settings:{businessName:''}};
+let db=JSON.parse(JSON.stringify(emptyDB)),unlocked=false,formKind='';
 const money=n=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(Number(n)||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const today=()=>new Date().toISOString().slice(0,10);
-function bootstrap(){document.getElementById('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const has=NativeStore.hasPin()==='true';document.getElementById('lockText').textContent=has?'Devam etmek için PIN kodunuzu girin.':'Güvenli kullanım için en az 6 karakterli PIN belirleyin.';document.querySelector('#lock button').textContent=has?'Giriş yap':'PIN oluştur';}
-function submitPin(){const p=document.getElementById('pin').value;if(p.length<6){pinError.textContent='PIN en az 6 karakter olmalı.';return;}if(NativeStore.hasPin()!=='true'){const r=NativeStore.setPin(p);if(r!=='ok'){pinError.textContent='PIN kaydedilemedi.';return;}}else if(NativeStore.verifyPin(p)!=='true'){pinError.textContent='PIN hatalı.';return;}db=Object.assign({},emptyDB,JSON.parse(NativeStore.loadData()||'{}'));unlocked=true;lock.classList.add('hidden');pin.value='';render();}
-function persist(){if(unlocked){const r=NativeStore.saveData(JSON.stringify(db));if(r!=='ok')NativeStore.showMessage('Kayıt sırasında hata oluştu. Yedek almayı deneyin.');}render();}
-function lockApp(){unlocked=false;lock.classList.remove('hidden');pin.value='';pinError.textContent='';}
-function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===id));render();}
-function handleBack(){if(!modal.classList.contains('hidden'))closeForm();else if(!lock.classList.contains('hidden')){}else showView('dashboard');}
-function openForm(kind,defaultType){formKind=kind;const b=document.getElementById('formBody');let fields='';const field=(name,label,type='text',placeholder='')=>'<div class="field"><label>'+label+'</label><input name="'+name+'" type="'+type+'" placeholder="'+placeholder+'" '+(type==='number'?'step="0.01"':'')+'></div>';
-if(kind==='transaction'){fields='<div class="formgrid">'+field('description','Açıklama','text','Örn. Danışmanlık ücreti')+field('amount','Tutar (TL)','number')+'<div class="field"><label>Tür</label><select name="type"><option value="income" '+(defaultType==='income'?'selected':'')+'>Gelir</option><option value="expense" '+(defaultType==='expense'?'selected':'')+'>Gider</option></select></div>'+field('date','Tarih','date')+field('category','Kategori','text','Genel')+field('party','İlgili kişi / firma')+'</div>';}
-if(kind==='customer'){fields='<div class="formgrid">'+field('name','Adı / Firma adı')+field('taxNo','TCKN / Vergi no')+field('phone','Telefon','tel')+field('email','E-posta','email')+field('address','Adres')+'</div>';}
-if(kind==='invoice'){fields='<div class="formgrid">'+field('number','Fatura numarası')+field('party','Müşteri / Tedarikçi')+'<div class="field"><label>Tür</label><select name="type"><option value="sale">Satış</option><option value="purchase">Alış</option></select></div>'+field('date','Tarih','date')+field('net','KDV hariç tutar','number')+field('vatRate','KDV oranı (%)','number')+'</div><p class="muted">KDV ve genel toplam otomatik hesaplanır.</p>';}
-if(kind==='reminder'){fields='<div class="formgrid">'+field('title','Hatırlatma başlığı')+field('date','Son tarih','date')+field('note','Not')+'</div>';}
-document.getElementById('formTitle').textContent=({transaction:'Gelir / gider kaydı',customer:'Müşteri / firma ekle',invoice:'Fatura kaydı',reminder:'Hatırlatma ekle'})[kind];b.innerHTML=fields+'<button class="btn" style="width:100%;margin-top:10px" onclick="saveForm()">Kaydet</button>';b.querySelectorAll('input[type=date]').forEach(x=>x.value=today());modal.classList.remove('hidden');}
-function closeForm(){modal.classList.add('hidden');}
-function saveForm(){const data={};formBody.querySelectorAll('input,select').forEach(x=>data[x.name]=x.value);if(formKind==='transaction'){if(!data.description||Number(data.amount)<=0)return NativeStore.showMessage('Açıklama ve geçerli tutar girin.');db.transactions.unshift({...data,id:Date.now(),amount:Number(data.amount)});}
-if(formKind==='customer'){if(!data.name)return NativeStore.showMessage('Ad veya firma adı girin.');db.customers.unshift({...data,id:Date.now()});}
-if(formKind==='invoice'){if(!data.party||Number(data.net)<=0)return NativeStore.showMessage('Firma ve tutar girin.');const net=Number(data.net),rate=Number(data.vatRate)||0;db.invoices.unshift({...data,id:Date.now(),net,vat:net*rate/100,total:net*(1+rate/100)});}
-if(formKind==='reminder'){if(!data.title||!data.date)return NativeStore.showMessage('Başlık ve tarih girin.');db.reminders.unshift({...data,id:Date.now()});}
-closeForm();persist();NativeStore.showMessage('Kayıt eklendi.');}
-function removeItem(type,id){if(!confirm('Bu kayıt silinsin mi?'))return;db[type]=db[type].filter(x=>x.id!==id);persist();}
-function rows(items,type){if(!items.length)return '<div class="empty">Henüz kayıt bulunmuyor.</div>';return items.map(x=>{let title=x.description||x.name||x.party||x.title||x.number||'Kayıt';let sub=x.date||x.phone||'';let val=type==='transactions'?'<b class="'+(x.type==='income'?'positive':'negative')+'">'+(x.type==='income'?'+':'-')+money(x.amount)+'</b>':type==='invoices'?'<b>'+money(x.total)+'</b>':'';return '<div class="row"><div style="min-width:0"><b>'+esc(title)+'</b><div class="muted">'+esc(sub)+' '+(x.category?'• '+esc(x.category):'')+'</div></div><div style="text-align:right">'+val+'<div><button class="muted" style="border:0;background:none" onclick="removeItem(\''+type+'\','+x.id+')">Sil</button></div></div></div>';}).join('');}
-function render(){if(!unlocked)return;const inc=db.transactions.filter(x=>x.type==='income').reduce((a,x)=>a+x.amount,0),out=db.transactions.filter(x=>x.type==='expense').reduce((a,x)=>a+x.amount,0);totalIncome.textContent=money(inc);totalExpense.textContent=money(out);balance.textContent=money(inc-out);customerCount.textContent=db.customers.length;recent.innerHTML=rows(db.transactions.slice(0,5),'transactions');transactionList.innerHTML=rows(db.transactions,'transactions');customerList.innerHTML=rows(db.customers,'customers');invoiceList.innerHTML=rows(db.invoices,'invoices');reminderList.innerHTML=rows(db.reminders,'reminders');reportBody.innerHTML='<div class="row"><span>Toplam gelir</span><b class="positive">'+money(inc)+'</b></div><div class="row"><span>Toplam gider</span><b class="negative">'+money(out)+'</b></div><div class="row"><span>Net fark</span><b>'+money(inc-out)+'</b></div><div class="row"><span>Fatura toplamı</span><b>'+money(db.invoices.reduce((a,x)=>a+x.total,0))+'</b></div><div class="row"><span>Müşteri sayısı</span><b>'+db.customers.length+'</b></div>';businessName.value=db.settings.businessName||'';companyTitle.textContent=db.settings.businessName||'Mali Durum Özeti';}
-function saveSettings(){db.settings.businessName=businessName.value.trim();persist();NativeStore.showMessage('Ayarlar kaydedildi.');}
-function backup(){NativeStore.saveBackup(JSON.stringify({app:'AkilliMuhasebe',version:1,createdAt:new Date().toISOString(),data:db}));}
-function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);db=Object.assign({},emptyDB,o.data||o);persist();NativeStore.showMessage('Yedek geri yüklendi.');}catch(err){NativeStore.showMessage('Yedek dosyası okunamadı.');}};r.readAsText(f);e.target.value='';}
-function exportCsv(){const lines=[['Tarih','Tür','Açıklama','Tutar','Kategori'],...db.transactions.map(x=>[x.date,x.type==='income'?'Gelir':'Gider',x.description,x.amount,x.category])];const csv='\ufeff'+lines.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='akilli-muhasebe-hareketler.csv';a.click();URL.revokeObjectURL(url);}
+const dateToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function normalizeDB(data){const d=Object.assign({},JSON.parse(JSON.stringify(emptyDB)),data||{});for(const k of ['customers','transactions','invoices','reminders','employees','payroll','accounts','assets'])if(!Array.isArray(d[k]))d[k]=[];if(!d.accounts.length)d.accounts=JSON.parse(JSON.stringify(emptyDB.accounts));if(!d.settings)d.settings={businessName:''};return d}
+function bootstrap(){$('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const has=NativeStore.hasPin()==='true';$('lockText').textContent=has?'Devam etmek için PIN kodunuzu girin.':'Güvenli kullanım için en az 6 karakterli PIN belirleyin.';$('pinButton').textContent=has?'Giriş yap':'PIN oluştur'}
+function submitPin(){const p=$('pinInput').value;if(p.length<6){$('pinError').textContent='PIN en az 6 karakter olmalı.';return}if(NativeStore.hasPin()!=='true'){if(NativeStore.setPin(p)!=='ok'){$('pinError').textContent='PIN kaydedilemedi.';return}}else if(NativeStore.verifyPin(p)!=='true'){$('pinError').textContent='PIN hatalı.';return}try{db=normalizeDB(JSON.parse(NativeStore.loadData()||'{}'))}catch(e){db=normalizeDB({})}unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';render()}
+function persist(){if(unlocked){if(NativeStore.saveData(JSON.stringify(db))!=='ok')NativeStore.showMessage('Kayıt sırasında hata oluştu. Lütfen yedek alın.')}render()}
+function lockApp(){unlocked=false;$('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent=''}
+function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===id));render()}
+function handleBack(){if(!$('modal').classList.contains('hidden'))closeForm();else if(!$('lock').classList.contains('hidden')){}else showView('dashboard')}
+function accountOptions(){return db.accounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')}
+function employeeOptions(){return db.employees.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')}
+function field(name,label,type='text',placeholder=''){return '<div class="field"><label>'+label+'</label><input name="'+name+'" type="'+type+'" placeholder="'+placeholder+'" '+(type==='number'?'step="0.01"':'')+'></div>'}
+function selectField(name,label,options){return '<div class="field"><label>'+label+'</label><select name="'+name+'">'+options+'</select></div>'}
+function openForm(kind,defaultType){formKind=kind;let f='';
+if(kind==='transaction'){f='<div class="formgrid">'+field('description','Açıklama','text','Örn. Danışmanlık ücreti')+field('amount','Tutar (TL)','number')+selectField('type','İşlem türü','<option value="income" '+(defaultType==='income'?'selected':'')+'>Gelir</option><option value="expense" '+(defaultType==='expense'?'selected':'')+'>Gider</option>')+field('date','Tarih','date')+field('category','Kategori','text','Genel')+field('party','İlgili kişi / firma')+selectField('accountId','Kasa / banka hesabı',accountOptions())+'</div>'}
+if(kind==='customer'){f='<div class="formgrid">'+field('name','Adı / Firma adı')+selectField('type','Cari türü','<option value="customer">Müşteri</option><option value="supplier">Tedarikçi</option><option value="both">Her ikisi</option>')+field('taxNo','TCKN / Vergi no')+field('phone','Telefon','tel')+field('email','E-posta','email')+field('address','Adres')+'</div>'}
+if(kind==='invoice'){f='<div class="formgrid">'+field('number','Fatura numarası')+field('party','Müşteri / Tedarikçi')+selectField('type','Fatura türü','<option value="sale">Satış</option><option value="purchase">Alış</option>')+field('date','Fatura tarihi','date')+field('dueDate','Vade tarihi','date')+field('net','KDV hariç tutar (TL)','number')+field('vatRate','KDV oranı (%)','number','20')+selectField('status','Durum','<option value="unpaid">Ödenmedi</option><option value="paid">Ödendi</option><option value="partial">Kısmen ödendi</option>')+'</div><p class="muted">KDV ve genel toplam, girilen orana göre hesaplanır.</p>'}
+if(kind==='employee'){f='<div class="formgrid">'+field('name','Ad soyad')+field('title','Görev / Ünvan')+field('identity','TCKN')+field('phone','Telefon','tel')+field('startDate','İşe giriş tarihi','date')+field('gross','Aylık brüt ücret (TL)','number')+'</div>'}
+if(kind==='payroll'){f='<div class="formgrid">'+selectField('employeeId','Personel',employeeOptions())+field('period','Dönem (YYYY-AA)','month')+field('gross','Brüt ücret (TL)','number')+field('extras','Ek ödeme (TL)','number')+field('deductions','Girilen kesintiler (TL)','number')+'</div><p class="muted">Net ön hesap: brüt + ek ödeme - girilen kesintiler.</p>'}
+if(kind==='account'){f='<div class="formgrid">'+field('name','Hesap adı')+selectField('kind','Hesap türü','<option value="cash">Kasa</option><option value="bank">Banka</option><option value="other">Diğer</option>')+field('opening','Açılış bakiyesi (TL)','number')+'</div>'}
+if(kind==='asset'){f='<div class="formgrid">'+field('name','Demirbaş / varlık adı')+field('purchaseDate','Alış tarihi','date')+field('cost','Alış bedeli (TL)','number')+field('life','Kullanım ömrü (yıl)','number')+'</div>'}
+if(kind==='reminder'){f='<div class="formgrid">'+field('title','Hatırlatma başlığı')+field('date','Son tarih','date')+field('note','Not')+'</div>'}
+$('formTitle').textContent=({transaction:'Gelir / gider kaydı',customer:'Cari hesap ekle',invoice:'Fatura kaydı',employee:'Personel kaydı',payroll:'Bordro ön hesabı',account:'Kasa / banka hesabı',asset:'Demirbaş / varlık kaydı',reminder:'Hatırlatma ekle'})[kind]||'Yeni kayıt';
+$('formBody').innerHTML=f+'<button class="btn" style="width:100%;margin-top:10px" onclick="saveForm()">Kaydet</button>';$('formBody').querySelectorAll('input[type=date]').forEach(x=>x.value=dateToday());$('formBody').querySelectorAll('input[type=month]').forEach(x=>x.value=dateToday().slice(0,7));$('modal').classList.remove('hidden')}
+function closeForm(){$('modal').classList.add('hidden')}
+function readForm(){const o={};$('formBody').querySelectorAll('input,select').forEach(x=>o[x.name]=x.value);return o}
+function saveForm(){const d=readForm(),id=Date.now();
+if(formKind==='transaction'){if(!d.description||Number(d.amount)<=0)return NativeStore.showMessage('Açıklama ve geçerli tutar girin.');db.transactions.unshift({...d,id,amount:Number(d.amount),accountId:Number(d.accountId)||db.accounts[0]?.id})}
+if(formKind==='customer'){if(!d.name)return NativeStore.showMessage('Ad veya firma adı girin.');db.customers.unshift({...d,id})}
+if(formKind==='invoice'){if(!d.party||Number(d.net)<=0)return NativeStore.showMessage('Firma ve tutar girin.');const net=Number(d.net),rate=Math.max(0,Number(d.vatRate)||0);db.invoices.unshift({...d,id,net,vatRate:rate,vat:net*rate/100,total:net*(1+rate/100)})}
+if(formKind==='employee'){if(!d.name)return NativeStore.showMessage('Personel adı girin.');d.gross=Number(d.gross)||0;db.employees.unshift({...d,id})}
+if(formKind==='payroll'){const e=db.employees.find(x=>x.id===Number(d.employeeId));if(!e)return NativeStore.showMessage('Önce personel kaydı ekleyin.');const gross=Number(d.gross||e.gross)||0,extras=Number(d.extras)||0,deductions=Number(d.deductions)||0;if(gross+extras<deductions)return NativeStore.showMessage('Kesintiler toplam kazançtan fazla olamaz.');db.payroll.unshift({...d,id,employeeName:e.name,gross,extras,deductions,net:gross+extras-deductions})}
+if(formKind==='account'){if(!d.name)return NativeStore.showMessage('Hesap adı girin.');db.accounts.push({...d,id,opening:Number(d.opening)||0})}
+if(formKind==='asset'){if(!d.name||Number(d.cost)<=0||Number(d.life)<=0)return NativeStore.showMessage('Varlık adı, bedeli ve kullanım ömrünü girin.');db.assets.unshift({...d,id,cost:Number(d.cost),life:Number(d.life)})}
+if(formKind==='reminder'){if(!d.title||!d.date)return NativeStore.showMessage('Başlık ve tarih girin.');db.reminders.unshift({...d,id})}
+closeForm();persist();NativeStore.showMessage('Kayıt eklendi.')}
+function removeItem(type,id){if(!confirm('Bu kayıt silinsin mi?'))return;db[type]=db[type].filter(x=>x.id!==id);persist()}
+function listRows(items,type){if(!items.length)return '<div class="empty">Henüz kayıt bulunmuyor.</div>';return items.map(x=>{let title=x.description||x.name||x.party||x.title||x.number||x.employeeName||'Kayıt',sub=x.date||x.startDate||x.period||x.phone||'';let val='',extra='';
+if(type==='transactions')val='<b class="'+(x.type==='income'?'positive':'negative')+'">'+(x.type==='income'?'+':'-')+money(x.amount)+'</b>';
+if(type==='invoices')val='<b>'+money(x.total)+'</b><div class="muted">'+(x.type==='sale'?'Satış':'Alış')+' • KDV '+money(x.vat)+'</div>';
+if(type==='payroll')val='<b>'+money(x.net)+'</b><div class="muted">Net ön hesap</div>';
+if(type==='assets'){const annual=x.cost/x.life;val='<b>'+money(x.cost)+'</b><div class="muted">Yıllık tahmini amortisman: '+money(annual)+'</div>'}
+if(type==='reminders'){const due=new Date(x.date+'T00:00:00'),now=new Date(dateToday()+'T00:00:00'),days=Math.ceil((due-now)/86400000);extra='<span class="badge">'+(days<0?'Gecikmiş':days===0?'Bugün':days+' gün kaldı')+'</span>'}
+if(type==='customers')sub=(x.type==='supplier'?'Tedarikçi':x.type==='both'?'Müşteri / Tedarikçi':'Müşteri')+(x.phone?' • '+x.phone:'');
+if(type==='employees')sub=(x.title||'Personel')+(x.startDate?' • '+x.startDate:'');
+return '<div class="row"><div style="min-width:0;flex:1"><b>'+esc(title)+'</b><div class="muted">'+esc(sub)+'</div></div><div style="text-align:right">'+extra+val+'<div><button class="muted" style="border:0;background:none" onclick="removeItem(\''+type+'\','+x.id+')">Sil</button></div></div></div>'}).join('')}
+function accountBalance(a){const movements=db.transactions.filter(x=>Number(x.accountId)===Number(a.id));return Number(a.opening||0)+movements.reduce((s,x)=>s+(x.type==='income'?Number(x.amount):-Number(x.amount)),0)}
+function render(){if(!unlocked)return;const inc=db.transactions.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount),0),out=db.transactions.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount),0);
+$('totalIncome').textContent=money(inc);$('totalExpense').textContent=money(out);$('netBalance').textContent=money(inc-out);$('customerCount').textContent=db.customers.length;
+$('recent').innerHTML=listRows(db.transactions.slice(0,6),'transactions');$('transactionList').innerHTML=listRows(db.transactions,'transactions');$('customerList').innerHTML=listRows(db.customers,'customers');$('invoiceList').innerHTML=listRows(db.invoices,'invoices');$('employeeList').innerHTML=listRows(db.employees,'employees');$('payrollList').innerHTML=listRows(db.payroll,'payroll');$('assetList').innerHTML=listRows(db.assets,'assets');$('reminderList').innerHTML=listRows([...db.reminders].sort((a,b)=>a.date.localeCompare(b.date)),'reminders');
+const accounts=db.accounts.map(a=>'<div class="row"><span>'+esc(a.name)+' <span class="badge">'+(a.kind==='cash'?'Kasa':a.kind==='bank'?'Banka':'Diğer')+'</span></span><b>'+money(accountBalance(a))+'</b></div>').join('')||'<div class="empty">Hesap eklenmemiş.</div>';
+$('accountSummary').innerHTML=accounts;$('financeList').innerHTML=accounts;
+const now=new Date(dateToday()+'T00:00:00'),soon=db.reminders.filter(x=>(new Date(x.date+'T00:00:00')-now)/86400000<=30).sort((a,b)=>a.date.localeCompare(b.date));
+$('upcoming').innerHTML=listRows(soon.slice(0,5),'reminders');
+const vatSales=db.invoices.filter(x=>x.type==='sale').reduce((s,x)=>s+x.vat,0),vatPurch=db.invoices.filter(x=>x.type==='purchase').reduce((s,x)=>s+x.vat,0),assets=db.assets.reduce((s,x)=>s+x.cost,0);
+$('reportBody').innerHTML='<div class="row"><span>Toplam gelir hareketi</span><b class="positive">'+money(inc)+'</b></div><div class="row"><span>Toplam gider hareketi</span><b class="negative">'+money(out)+'</b></div><div class="row"><span>Net fark</span><b>'+money(inc-out)+'</b></div><div class="row"><span>Satış faturası KDV toplamı</span><b>'+money(vatSales)+'</b></div><div class="row"><span>Alış faturası KDV toplamı</span><b>'+money(vatPurch)+'</b></div><div class="row"><span>Fatura toplamı</span><b>'+money(db.invoices.reduce((s,x)=>s+x.total,0))+'</b></div><div class="row"><span>Demirbaş alış bedeli toplamı</span><b>'+money(assets)+'</b></div><div class="row"><span>Personel sayısı</span><b>'+db.employees.length+'</b></div>';
+$('businessName').value=db.settings.businessName||'';$('companyTitle').textContent=db.settings.businessName||'Mali Durum Özeti'}
+function saveSettings(){db.settings.businessName=$('businessName').value.trim();persist();NativeStore.showMessage('Ayarlar kaydedildi.')}
+function backup(){const p=prompt('Şifreli yedek için en az 8 karakterli bir parola belirleyin:');if(!p)return;if(p.length<8)return NativeStore.showMessage('Yedek parolası en az 8 karakter olmalı.');const r=NativeStore.saveBackup(JSON.stringify({app:'AkilliMuhasebe',version:2,createdAt:new Date().toISOString(),data:db}),p);if(r!=='ok')NativeStore.showMessage('Yedek oluşturulamadı.')}
+function restoreBackup(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const p=prompt('Bu yedeği oluştururken kullandığınız parolayı girin:');if(!p)return;try{const plain=NativeStore.decryptBackup(String(reader.result),p);if(!plain||plain==='ERROR')throw new Error('password');const o=JSON.parse(plain);db=normalizeDB(o.data||o);persist();NativeStore.showMessage('Yedek geri yüklendi.')}catch(err){NativeStore.showMessage('Yedek açılamadı. Parolayı ve dosyayı kontrol edin.')}};reader.readAsText(file);e.target.value=''}
+function exportCsv(){const rows=[['Tarih','Tür','Açıklama','Tutar','Kategori','İlgili kişi'],...db.transactions.map(x=>[x.date,x.type==='income'?'Gelir':'Gider',x.description,x.amount,x.category,x.party])];const csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='akilli-muhasebe-hareketler.csv';a.click();URL.revokeObjectURL(url)}
+window.addEventListener('error',e=>{try{NativeStore.showMessage('Uygulama hatası: '+String(e.message||'bilinmeyen hata').slice(0,90))}catch(_){}});
 bootstrap();
-</script></body></html>
+</script>
+</body></html>

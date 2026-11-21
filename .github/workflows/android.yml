@@ -6,6 +6,9 @@ on:
       - akilli-muhasebe
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,11 +22,63 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Android SDK kur
         uses: android-actions/setup-android@v3
 
-      - name: Android 35 paketlerini kur
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Android SDK lisanslarini kabul et ve paketleri kur
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Web arayuz JavaScript kontrolu
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          class Scripts(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.active = False
+                  self.parts = []
+                  self.current = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "script":
+                      self.active = True
+                      self.current = []
+              def handle_data(self, data):
+                  if self.active:
+                      self.current.append(data)
+              def handle_endtag(self, tag):
+                  if tag == "script" and self.active:
+                      self.parts.append("".join(self.current))
+                      self.active = False
+          parser = Scripts()
+          with open("app/src/main/assets/index.html", encoding="utf-8") as f:
+              parser.feed(f.read())
+          if not parser.parts:
+              raise SystemExit("JavaScript bulunamadi")
+          with open("/tmp/akilli-muhasebe.js", "w", encoding="utf-8") as f:
+              f.write("\n".join(parser.parts))
+          PY
+          node --check /tmp/akilli-muhasebe.js
+
+      - name: Android kaynak XML kontrolu
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          for path in [
+              "app/src/main/AndroidManifest.xml",
+              "app/src/main/res/values/strings.xml",
+              "app/src/main/res/values/styles.xml",
+              "app/src/main/res/drawable/ic_launcher.xml",
+          ]:
+              ET.parse(path)
+              print("OK:", path)
+          PY
 
       - name: Gradle 8.9 kur
         uses: gradle/actions/setup-gradle@v4

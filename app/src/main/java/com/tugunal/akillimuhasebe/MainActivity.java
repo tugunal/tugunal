@@ -10,16 +10,19 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.graphics.Color;
+import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
-import android.view.Window;
 
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,11 +39,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class MainActivity extends Activity {
     private static final String PREFS = "akilli_muhasebe_secure";
     private static final String KEY_ALIAS = "akilli_muhasebe_local_data_key";
     private static final int FILE_PICKER_REQUEST = 4107;
+    private static final int BACKUP_ITERATIONS = 150000;
+
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private long pausedAt = 0L;
@@ -51,39 +57,49 @@ public class MainActivity extends Activity {
         Window window = getWindow();
         window.setStatusBarColor(Color.rgb(11, 24, 48));
         window.setNavigationBarColor(Color.WHITE);
-        if (Build.VERSION.SDK_INT >= 30) {
-            window.setDecorFitsSystemWindows(true);
-        }
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(true);
 
+        WebView.setWebContentsDebuggingEnabled(false);
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(245, 248, 252));
         webView.setVerticalScrollBarEnabled(false);
         webView.setHorizontalScrollBarEnabled(false);
-
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setAllowFileAccess(true);
         webView.getSettings().setAllowContentAccess(true);
         webView.getSettings().setDatabaseEnabled(true);
-
+        webView.getSettings().setJavaScriptCanOpenWindowsAutomatically(false);
+        webView.getSettings().setSupportMultipleWindows(false);
         webView.addJavascriptInterface(new SecureBridge(), "NativeStore");
+
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                return !url.startsWith("file:///android_asset/") && !url.equals("about:blank");
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return !url.startsWith("file:///android_asset/") && !url.equals("about:blank");
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 view.evaluateJavascript("if(window.bootstrap){window.bootstrap();}", null);
             }
         });
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
-                if (filePathCallback != null) {
-                    filePathCallback.onReceiveValue(null);
-                }
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = callback;
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("*/*");
+                intent.setType("application/json");
                 try {
                     startActivityForResult(intent, FILE_PICKER_REQUEST);
                     return true;
@@ -158,7 +174,7 @@ public class MainActivity extends Activity {
         return generator.generateKey();
     }
 
-    private String encrypt(String plainText) throws Exception {
+    private String encryptLocalData(String plainText) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateEncryptionKey());
         byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
@@ -169,7 +185,7 @@ public class MainActivity extends Activity {
         return Base64.getEncoder().encodeToString(combined);
     }
 
-    private String decrypt(String encoded) throws Exception {
+    private String decryptLocalData(String encoded) throws Exception {
         byte[] combined = Base64.getDecoder().decode(encoded);
         if (combined.length < 13) return "{}";
         byte[] iv = new byte[12];
@@ -191,7 +207,61 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void saveBackupFile(String json) {
+    private SecretKey deriveBackupKey(String password, byte[] salt, int iterations) throws Exception {
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, iterations, 256);
+        try {
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] keyBytes = factory.generateSecret(spec).getEncoded();
+            return new SecretKeySpec(keyBytes, "AES");
+        } finally {
+            spec.clearPassword();
+        }
+    }
+
+    private String encryptBackup(String json, String password) throws Exception {
+        if (password == null || password.length() < 8) throw new IllegalArgumentException("weak password");
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[16];
+        byte[] iv = new byte[12];
+        random.nextBytes(salt);
+        random.nextBytes(iv);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE,
+                deriveBackupKey(password, salt, BACKUP_ITERATIONS),
+                new GCMParameterSpec(128, iv));
+        byte[] encrypted = cipher.doFinal(json.getBytes(StandardCharsets.UTF_8));
+
+        JSONObject envelope = new JSONObject();
+        envelope.put("format", "AKILLI_MUHASEBE_BACKUP_V1");
+        envelope.put("iterations", BACKUP_ITERATIONS);
+        envelope.put("salt", Base64.getEncoder().encodeToString(salt));
+        envelope.put("iv", Base64.getEncoder().encodeToString(iv));
+        envelope.put("data", Base64.getEncoder().encodeToString(encrypted));
+        return envelope.toString(2);
+    }
+
+    private String decryptBackupEnvelope(String envelopeText, String password) throws Exception {
+        JSONObject envelope = new JSONObject(envelopeText);
+        if (!"AKILLI_MUHASEBE_BACKUP_V1".equals(envelope.optString("format"))) {
+            throw new IllegalArgumentException("invalid backup format");
+        }
+        int iterations = envelope.optInt("iterations", BACKUP_ITERATIONS);
+        if (iterations < 100000 || iterations > 1000000) {
+            throw new IllegalArgumentException("invalid iteration count");
+        }
+        byte[] salt = Base64.getDecoder().decode(envelope.getString("salt"));
+        byte[] iv = Base64.getDecoder().decode(envelope.getString("iv"));
+        byte[] encrypted = Base64.getDecoder().decode(envelope.getString("data"));
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE,
+                deriveBackupKey(password, salt, iterations),
+                new GCMParameterSpec(128, iv));
+        return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+    }
+
+    private boolean saveBackupFile(String encryptedEnvelope) {
         String fileName = "AkilliMuhasebe_Yedek_" + System.currentTimeMillis() + ".json";
         try {
             OutputStream outputStream;
@@ -208,20 +278,22 @@ public class MainActivity extends Activity {
             } else {
                 File dir = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                         "AkilliMuhasebe");
-                if (!dir.exists()) dir.mkdirs();
+                if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("Klasör oluşturulamadı");
                 outputStream = new FileOutputStream(new File(dir, fileName));
             }
             if (outputStream == null) throw new IllegalStateException("Dosya açılamadı");
-            outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+            outputStream.write(encryptedEnvelope.getBytes(StandardCharsets.UTF_8));
             outputStream.flush();
             outputStream.close();
             runOnUiThread(() -> Toast.makeText(this,
-                    "Yedek Dosyalar/AkilliMuhasebe klasörüne kaydedildi.",
+                    "Şifreli yedek İndirilenler/AkilliMuhasebe klasörüne kaydedildi.",
                     Toast.LENGTH_LONG).show());
+            return true;
         } catch (Exception ex) {
             runOnUiThread(() -> Toast.makeText(this,
                     "Yedek kaydedilemedi: " + ex.getMessage(),
                     Toast.LENGTH_LONG).show());
+            return false;
         }
     }
 
@@ -269,7 +341,7 @@ public class MainActivity extends Activity {
             String encrypted = getSharedPreferences(PREFS, MODE_PRIVATE).getString("encrypted_db", "");
             if (encrypted.isEmpty()) return "{}";
             try {
-                return decrypt(encrypted);
+                return decryptLocalData(encrypted);
             } catch (Exception ex) {
                 return "{}";
             }
@@ -278,7 +350,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String saveData(String json) {
             try {
-                String encrypted = encrypt(json == null ? "{}" : json);
+                String encrypted = encryptLocalData(json == null ? "{}" : json);
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         .putString("encrypted_db", encrypted).apply();
                 return "ok";
@@ -288,8 +360,22 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void saveBackup(String json) {
-            saveBackupFile(json == null ? "{}" : json);
+        public String saveBackup(String json, String password) {
+            try {
+                String encrypted = encryptBackup(json == null ? "{}" : json, password);
+                return saveBackupFile(encrypted) ? "ok" : "error";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        @JavascriptInterface
+        public String decryptBackup(String envelope, String password) {
+            try {
+                return MainActivity.this.decryptBackupEnvelope(envelope, password);
+            } catch (Exception ex) {
+                return "ERROR";
+            }
         }
 
         @JavascriptInterface
@@ -297,7 +383,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.1.0";
+                return "0.2.0";
             }
         }
 
