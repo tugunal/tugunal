@@ -83,10 +83,11 @@ function finishAuthenticatedSession(data,profile){
  data.settings=data.settings||{};
  if(!Array.isArray(data.settings.userProfiles))data.settings.userProfiles=appAuthProfiles(data);
  data.settings.userProfile=profile;
- db=data;readOnlyRecovery=false;unlocked=true;
+ db=data;readOnlyRecovery=false;unlocked=false;
  migrateLegacyData();
  const result=NativeStore.saveData(JSON.stringify(db));
  if(result!=="ok")throw Error("Şifreli verilerin kaydı doğrulanamadı. Yedek alın.");
+ unlocked=true;
  $("lock").classList.add("hidden");
  $("pinInput").value="";$("regPin").value="";$("regPinConfirm").value="";
  $("regExistingPin").value="";
@@ -154,7 +155,13 @@ function migrateOldLocalAccount(identifier,password){
  if(!validAuthEmail(profile.email))throw Error("Eski profilde geçerli e-posta yok. Önce eski uygulamadan profil bilgilerini düzenleyin.");
  if(duplicateAppAccount(profiles,username,profile.email,profile.phone,profile.id))
    throw Error("Kullanıcı adı, e-posta veya telefon başka bir profilde kullanılıyor.");
- const registered=NativeStore.registerLocalAccount(username,profile.email,profile.phone,password);
+ // The legacy device PIN authorizes migration but must not become the account password.
+ const newPassword=prompt("Eski PIN ile giriş yerine kullanacağınız yeni hesap şifresini belirleyin (8–64 karakter):");
+ if(newPassword===null)throw Error("Yeni şifre belirlenmedi; eski kayıtlar korunuyor.");
+ if(newPassword.length<8||newPassword.length>64)throw Error("Yeni hesap şifresi 8–64 karakter olmalı.");
+ const confirmPassword=prompt("Yeni hesap şifresini tekrar girin:");
+ if(confirmPassword!==newPassword)throw Error("Yeni şifreler eşleşmiyor; eski kayıtlar korunuyor.");
+ const registered=NativeStore.registerLocalAccount(username,profile.email,profile.phone,newPassword);
  if(registered!=="ok")throw Error(authFriendlyError(registered));
  profile.username=username;
  data.settings.userProfiles=profiles;
@@ -215,15 +222,25 @@ saveUserProfile=function(){
  if(duplicateAppAccount(profiles,previous.username||"",email,phone,previous.id))
    return NativeStore.showMessage("E-posta veya telefon başka bir kullanıcıya ait.");
  const active=normalizeAuthText(NativeStore.currentLocalUser());
- if(active&&active===normalizeAuthText(previous.username)){
+ const accountMatches=!!active&&active===normalizeAuthText(previous.username);
+ if(accountMatches){
    const res=NativeStore.updateLocalAccountContact(active,email,phone);
    if(res!=="ok")return NativeStore.showMessage(authFriendlyError(res));
  }
+ const previousProfiles=db.settings.userProfiles;
  const profile={...previous,firstName:first,lastName:last,displayName:first+" "+last,
    email,phone,role,officeName:office,updatedAt:new Date().toISOString()};
  db.settings.userProfiles=profiles.map(p=>String(p.id)===String(previous.id)?profile:p);
  db.settings.userProfile=profile;
- persist();
+ if(persist()!==true){
+   db.settings.userProfiles=previousProfiles;
+   db.settings.userProfile=previous;
+   if(accountMatches){
+     const rollback=NativeStore.updateLocalAccountContact(active,previous.email||"",previous.phone||"");
+     if(rollback!=="ok")return NativeStore.showMessage("Profil kaydı doğrulanamadı; giriş iletişim bilgileri geri alınamadı. Mevcut oturumu kapatmadan yedek alın.");
+   }
+   return NativeStore.showMessage("Profil kaydedilemedi. Önceki bilgiler geri yüklendi.");
+ }
  NativeStore.showMessage("Kullanıcı bilgileri güncellendi.");
 };
 changeSecurityPin=function(){
