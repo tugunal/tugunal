@@ -11,6 +11,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
@@ -45,6 +47,11 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 public class MainActivity extends Activity {
     private static final String PREFS = "akilli_muhasebe_secure";
@@ -104,7 +111,21 @@ public class MainActivity extends Activity {
                 filePathCallback = callback;
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("application/json");
+                boolean imageRequest = false;
+                String[] acceptTypes = params.getAcceptTypes();
+                if (acceptTypes != null) {
+                    for (String acceptType : acceptTypes) {
+                        if (acceptType != null && acceptType.toLowerCase().contains("image")) {
+                            imageRequest = true;
+                            break;
+                        }
+                    }
+                }
+                intent.setType(imageRequest ? "image/*" : "application/json");
+                if (imageRequest) {
+                    intent.putExtra(Intent.EXTRA_MIME_TYPES,
+                            new String[]{"image/jpeg", "image/png", "image/webp"});
+                }
                 try {
                     startActivityForResult(intent, FILE_PICKER_REQUEST);
                     return true;
@@ -343,6 +364,39 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void sendInvoiceOcrResult(boolean success, String text, String error) {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("success", success);
+            payload.put("text", text == null ? "" : text);
+            payload.put("error", error == null ? "" : error);
+            String argument = JSONObject.quote(payload.toString());
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    webView.evaluateJavascript(
+                            "window.onInvoiceOcrResult && window.onInvoiceOcrResult(" + argument + ");",
+                            null);
+                }
+            });
+        } catch (Exception ignored) {
+            runOnUiThread(() -> Toast.makeText(this,
+                    "Fatura metni uygulamaya aktarılamadı.", Toast.LENGTH_SHORT).show());
+        }
+    }
+
+    private Bitmap decodeInvoiceBitmap(byte[] bytes) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
+        int sample = 1;
+        int maxDimension = Math.max(bounds.outWidth, bounds.outHeight);
+        while (maxDimension / sample > 2200) sample *= 2;
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = sample;
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+    }
+
     public class SecureBridge {
         @JavascriptInterface
         public String hasPin() {
@@ -425,11 +479,50 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void recognizeInvoiceImage(String base64Image) {
+            if (base64Image == null || base64Image.isEmpty()) {
+                sendInvoiceOcrResult(false, "", "Fotoğraf verisi bulunamadı.");
+                return;
+            }
+            if (base64Image.length() > 22000000) {
+                sendInvoiceOcrResult(false, "", "Fotoğraf çok büyük. Daha küçük bir görüntü seçin.");
+                return;
+            }
+            TextRecognizer recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            final Bitmap[] bitmapHolder = new Bitmap[1];
+            try {
+                byte[] bytes = Base64.getDecoder().decode(base64Image);
+                Bitmap bitmap = decodeInvoiceBitmap(bytes);
+                if (bitmap == null) {
+                    recognizer.close();
+                    sendInvoiceOcrResult(false, "", "Fotoğraf açılamadı.");
+                    return;
+                }
+                bitmapHolder[0] = bitmap;
+                InputImage image = InputImage.fromBitmap(bitmap, 0);
+                recognizer.process(image)
+                        .addOnSuccessListener(result ->
+                                sendInvoiceOcrResult(true, result.getText(), ""))
+                        .addOnFailureListener(error ->
+                                sendInvoiceOcrResult(false, "", "Fotoğraf okunamadı. Daha net bir görüntü deneyin."))
+                        .addOnCompleteListener(task -> {
+                            recognizer.close();
+                            if (bitmapHolder[0] != null && !bitmapHolder[0].isRecycled()) {
+                                bitmapHolder[0].recycle();
+                            }
+                        });
+            } catch (Exception ex) {
+                recognizer.close();
+                sendInvoiceOcrResult(false, "", "Fotoğraf işlenirken hata oluştu.");
+            }
+        }
+
+        @JavascriptInterface
         public String getAppVersion() {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.3.0";
+                return "0.4.0";
             }
         }
 

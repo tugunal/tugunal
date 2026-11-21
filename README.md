@@ -2,14 +2,17 @@
 
 Turkce, Android tabanli, cevrimdisi oncelikli muhasebe takip uygulamasi.
 
-## Surum 0.3.0 modulleri
+## Surum 0.4.0 modulleri
 
-- Birden fazla mukellef / firma profili ve firmalar arasi guvenli veri ayrimi
+- Birden fazla mukellef / firma profili ve firma bazli veri ayrimi
 - Firma kartlari: isletme turu, vergi dairesi, vergi numarasi/TCKN, iletisim, mali yil
 - Musteri ve tedarikci cari kartlari
 - Gelir ve gider kayitlari
 - Her firma icin ayri kasa, banka ve diger hesap bakiyeleri
 - Alis / satis fatura taslaklari, KDV ve vade takibi
+- Fatura fotografi icin cihaz uzerinde OCR metin tanima (Latin alfabesi)
+- OCR ile onerilen fatura numarasi, vergi no, tarih, matrah ve KDV alanlari
+- OCR sonucunu kaydetmeden once kullanici kontrolu ve duzeltme
 - Personel kayitlari
 - Brute dayali basit bordro on hesaplari
 - Demirbas ve dogrusal amortisman tahmini
@@ -19,6 +22,10 @@ Turkce, Android tabanli, cevrimdisi oncelikli muhasebe takip uygulamasi.
 - PIN girisi ve arka planda kalinca otomatik kilitleme
 - Android Keystore ile yerel veritabani sifreleme
 - Parola tabanli AES-GCM sifreli yedekleme ve geri yukleme
+
+## OCR sinirlari
+
+Fatura fotoğraflarindaki metin cihazda ML Kit ile okunur. Ilk surum yalnizca Latin alfabesi OCR modelini icerir; basili ve net faturalar icin uygundur. El yazisi, dusuk cozunurluk, egik veya cok karmaşık faturalar yanlis okunabilir. OCR sonucu otomatik olarak resmi kayit veya beyanname sayilmaz; muhasebeci her alani kontrol edip onaylamalidir. PDF fatura dosyalarinin dogrudan OCR ile okunmasi bu surumde yoktur.
 
 ## APK derlemesi
 
