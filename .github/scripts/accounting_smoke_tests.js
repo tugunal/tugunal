@@ -33,8 +33,8 @@ function element(id){
 }
 const fakeWindow={addEventListener(){},scrollTo(){}};
 const native={
-  saved:[],messages:[],hasPin:()=>"true",getAppVersion:()=>"1.2.0",
-  showMessage(s){this.messages.push(String(s))},saveData(json){this.saved.push(JSON.parse(json));return"ok"},
+  saved:[],messages:[],failNextSave:false,hasPin:()=>"true",getAppVersion:()=>"1.2.0",
+  showMessage(s){this.messages.push(String(s))},saveData(json){if(this.failNextSave){this.failNextSave=false;return"error"}this.saved.push(JSON.parse(json));return"ok"},
   loadData(){return"{}"},verifyPin(){return"true"},setPin(){return"ok"},
   checkForUpdate(){},saveCsvExport(){return"ok"},
 };
@@ -50,7 +50,15 @@ for(const path of sources.filter(x=>x!=="js/app_init.js")){
   vm.runInContext(fs.readFileSync(root+path,"utf8"),ctx,{filename:path,timeout:20000});
 }
 const expr=code=>vm.runInContext(code,ctx,{timeout:20000});
-expr("db=normalizeDB({});unlocked=true");
+expr("db=normalizeDB({});unlocked=true;render=function(){}");
+assert.equal(expr("persist()"),true,"First accounting snapshot must be committed");
+const committedTxCount=expr("db.transactions.length");
+expr("db.transactions.push({id:445566,date:'2026-11-21',type:'income',amount:25,description:'Uncommitted'})");
+native.failNextSave=true;
+assert.equal(expr("persist()"),false,"Native save failure must be reported");
+assert.equal(expr("db.transactions.length"),committedTxCount,"Failed save left fictitious transaction in memory");
+assert.ok(native.messages.some(s=>s.includes("Son doğrulanmış kayıtlar geri yüklendi")),
+  "Failed accounting save must warn the user");
 const activeId=expr("db.activeCompanyId");
 assert.ok(activeId);
 assert.equal(expr("Array.isArray(scoped('products'))"),true);
@@ -185,6 +193,14 @@ assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes("showEncrypted
   "corrupt encrypted records must open protected recovery");
 assert.ok(fs.readFileSync(root+"js/app_main.js","utf8").includes("render();return true;"),
   "persistence must report actual success to profile editor");
+assert.ok(fs.readFileSync(root+"js/app_records.js","utf8").includes("if(!persist())return;"),
+  "record forms must not close before successful encrypted write");
+assert.ok(fs.readFileSync(root+"js/app_documents.js","utf8").includes("if(!persist())return;"),
+  "OCR documents must stay editable if encrypted save fails");
+assert.ok(fs.readFileSync(root+"js/app_stock.js","utf8").includes("if(!persist())return false;"),
+  "stock changes must not claim success after failed save");
+assert.ok(fs.readFileSync(root+"js/app_bank.js","utf8").includes("if(!persist())return;"),
+  "bank previews must survive failed save");
 assert.ok(nativeSource.includes("encryptLocalData(accounts.toString())"),"auth registry must be Keystore encrypted");
 assert.ok(nativeSource.includes("activeLocalUsername"),"native account binding missing");
 assert.ok(!nativeSource.includes('put("password"'),"plain-text password storage forbidden");
