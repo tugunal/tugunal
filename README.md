@@ -143,3 +143,50 @@ This release uses a permanent new application ID for release-only builds:
 The source contains no private release keys. GitHub Actions produces an unsigned stable release APK for separate signing only when ANDROID_KEYSTORE_* repository secrets are absent. Sign the unsigned release using the separately backed-up permanent keystore with the official Android apksigner. NEVER distribute the unsigned build as an installable APK.
 
 Future versions must retain both the `.stable` application ID and the same release signing key. To automate publishing GitHub Releases and in-app update checks, securely configure the repository's four ANDROID_KEYSTORE_* Actions secrets. The key and passwords must not be committed to source control.
+
+
+## Akilli Muhasebe v1.0.0 — yeniden yapilandirilan calisma alani
+
+Hedef: tek giris, tutarli kayit ve mobil/masaustu ekran duzeni.
+Uygulamanin bir onceki v0.9.1 stabil paket kimligi (`com.tugunal.akillimuhasebe.stable`) ve yerel sifreli veri bicimi korunur; imza anahtari da onceki stabil surumle ayni olmali.
+
+### Kaynak yapisi
+
+- `app/src/main/assets/index.html`: sadece HTML ekranlar ve formlar
+- `app/src/main/assets/css/workspace.css`: masaustu sol menu, mobil alt menu, form ve rapor stilleri
+- `app/src/main/assets/js/accounting_rules.js`: salt-okunur, test edilebilir hesaplama ve kayit kurallari
+- `js/app_model.js`: eski verilerin uyumlu yuklenmesi, firma ayirimi ve muhasebe veri modeli
+- `js/app_main.js`: sifre/guncelleme/anasayfa ve veri giris ekranlari
+- `js/app_records.js`: fatura/gelir-gider/cari/veri kayitlari
+- `js/app_reports.js`: mali raporlar, yedekleme, CSV disari aktarma
+- `js/app_bank.js`: banka ekstresi, sutun esleme, mutabakat
+- `js/app_documents.js`: kamera/PDF/galeri OCR sonucu ve belge arşivi
+- `js/app_stock.js`: urun kartlari, stok giris-cikis ve irsaliye baglantisi
+- `js/workspace.js`: module navigation, bekleyen isler, audit ekleri
+- `js/app_init.js`: tum moduller yuklendikten sonra uygulamayi baslat
+- `document_parser.js`: fiş, e-fatura, irsaliye, POS slipi satir ayristiricisi
+
+### Calisan is akislari
+
+1. Firmayi sec: gelir-gider, banka, cari, belge ve stok kayitlari firmaya gore ayrilir.
+2. Belge tarama: kamera/galeri/PDF metni cihaz uzerinde okunur; kullanici belge turunu ve satirlarini dogrular.
+3. Fatura ve fiş: fatura taslagi ilgili cariye; fiş gideri yalnizca onayla olusturulur. POS slipi ikinci gider olusturmaz.
+4. Irsaliye: belge arşivinde ayri kalir. Istenirse ilgili faturayla baglanir; onayla depo giris-cikis hareketine aktarilir.
+5. Kasa, banka, cari ve taslak muhasebe fişleri: onayli hareketler ve borc-alacak dengesi korunur.
+6. Stok: malzeme kartlari, acilis, giris-cikis, kontrolsuz negatif stok engeli, tek irsaliyeden ikinci stok hareketi engeli.
+7. Kontrol: dengesiz fişler, mükerrer fatura, eslesmeyen banka, bekleyen irsaliye ve negatif stok uyarilari.
+8. Sifreli yedekleme/geri yukleme ve güvenli yerel veri kurtarma.
+
+### Dogrulama
+
+`node .github/scripts/accounting_smoke_tests.js` ve
+`node .github/scripts/document_parser_tests.js`.
+GitHub Actions ayrica tum JavaScript dosyalarinin soz dizimini, kaynak XML'leri ve Android APK derlemesini kontrol eder.
+
+### Resmi entegrasyonlar
+
+Bu sürüm **GIB e-Fatura/e-Arsiv/e-Defter gondermez**, SGK bildirgesi hazirlayip sunucuya yollamaz, banka hesaplarina uzaktan baglanmaz, mevcut kullanicilari bulutta senkronize etmez. Bordro tahminleri mevzuata uygun bordro yerine gecmez. Bunlar icin yetkili servis saglayicilari, guncel oranlar, sozlesmeler ve yetki gereklidir.
+
+### Mobil kurulum
+
+Onceki `.stable` paketini kullaniyorsan ayni sertifika ile imzalanan v1.0.0 release APK'sini ustune kur; yedek alma tavsiye edilir. Onceki `.akillimuhasebe` debug paketi farkli uygulamadir; eski kayitlari sifreli yedekle tasiyip yeni `.stable` uygulamaya geri yukle. Imza sertifikasinin degismesi halinde Android kurulumu engeller; APK'yi zorla yuklemek icin eski verileri silme.

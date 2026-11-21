@@ -46,36 +46,33 @@ jobs:
           fi
           gradle --version
 
-      - name: Web arayuz JavaScript kontrolu
+      - name: Katmanli uygulama JavaScript kontrolu
         run: |
+          find app/src/main/assets -name '*.js' -type f -print0 | xargs -0 -n 1 node --check
           python3 - <<'PY'
           from html.parser import HTMLParser
+          from pathlib import Path
+
+          root=Path("app/src/main/assets")
           class Scripts(HTMLParser):
               def __init__(self):
                   super().__init__()
-                  self.active = False
-                  self.parts = []
-                  self.current = []
-              def handle_starttag(self, tag, attrs):
-                  if tag == "script":
-                      self.active = True
-                      self.current = []
-              def handle_data(self, data):
-                  if self.active:
-                      self.current.append(data)
-              def handle_endtag(self, tag):
-                  if tag == "script" and self.active:
-                      self.parts.append("".join(self.current))
-                      self.active = False
-          parser = Scripts()
-          with open("app/src/main/assets/index.html", encoding="utf-8") as f:
-              parser.feed(f.read())
-          if not parser.parts:
-              raise SystemExit("JavaScript bulunamadi")
-          with open("/tmp/akilli-muhasebe.js", "w", encoding="utf-8") as f:
-              f.write("\n".join(parser.parts))
+                  self.scripts=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=="script":
+                      attributes=dict(attrs)
+                      if attributes.get("src"):
+                          self.scripts.append(attributes["src"])
+          parser=Scripts()
+          parser.feed((root/"index.html").read_text(encoding="utf-8"))
+          if len(parser.scripts)<11:
+              raise SystemExit("Modul eksik: "+repr(parser.scripts))
+          for name in parser.scripts:
+              path=root/name
+              if ".." in Path(name).parts or not path.is_file():
+                  raise SystemExit("Modul bulunamadi: "+name)
+              print("OK:",name)
           PY
-          node --check /tmp/akilli-muhasebe.js
 
       - name: Banka ve muhasebe islem testleri
         run: node .github/scripts/accounting_smoke_tests.js

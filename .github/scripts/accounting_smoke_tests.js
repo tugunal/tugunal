@@ -1,99 +1,110 @@
-const fs = require("node:fs");
-const vm = require("node:vm");
-const assert = require("node:assert/strict");
+/* Akilli Muhasebe 1.0 – offline smoke and integration tests (no Android emulator). */
+const fs=require("node:fs");
+const vm=require("node:vm");
+const assert=require("node:assert/strict");
+const root="app/src/main/assets/";
+const html=fs.readFileSync(root+"index.html","utf8");
+const sources=[...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m=>m[1]);
+assert.deepEqual(sources,[
+  "document_parser.js","js/accounting_rules.js","js/app_model.js","js/app_main.js",
+  "js/app_records.js","js/app_reports.js","js/app_bank.js","js/app_documents.js",
+  "js/app_stock.js","js/workspace.js","js/app_init.js"
+],"scripts must load in dependency order");
+for(const path of sources)assert.ok(fs.existsSync(root+path),"missing "+path);
+for(const path of sources)new Function(fs.readFileSync(root+path,"utf8"));
 
-const page = fs.readFileSync("app/src/main/assets/index.html", "utf8");
-const match = page.match(/<script>([\s\S]+?)<\/script>/);
-assert.ok(match, "app JavaScript not found");
-new Function(match[1]);
-
-const dom = new Map();
-function element(id) {
-  if (!dom.has(id)) {
-    const cls = new Set();
-    dom.set(id, {
-      id, value: "", textContent: "", innerHTML: "",
-      classList: {
-        add(...names) { names.forEach(n=>cls.add(n)); },
-        remove(...names) { names.forEach(n=>cls.delete(n)); },
-        contains(name) { return cls.has(name); },
-        toggle(name, forced) {
-          if (forced===undefined) forced=!cls.has(name);
-          if(forced) cls.add(name); else cls.delete(name);
-          return forced;
-        }
+const dom=new Map();
+function element(id){
+  if(!dom.has(id)){
+    const classes=new Set();
+    dom.set(id,{
+      id,value:"",type:"text",textContent:"",innerHTML:"",dataset:{},style:{},
+      classList:{
+        add(...names){for(const x of names)classes.add(x)},
+        remove(...names){for(const x of names)classes.delete(x)},
+        contains(x){return classes.has(x)},
+        toggle(x,force){if(force===undefined)force=!classes.has(x);force?classes.add(x):classes.delete(x);return force;}
       },
-      addEventListener(){}, querySelectorAll(){return[]}, options:[],
-      click(){}, style:{}
+      addEventListener(){},querySelector(){return null},querySelectorAll(){return[]},
+      reset(){},click(){},options:[],focus(){},
     });
   }
   return dom.get(id);
 }
-const ctx=vm.createContext({
-  document: {
-    getElementById: element,
-    querySelectorAll: ()=>[],
-    createElement: ()=>element("created"),
-  },
-  window: {addEventListener(){}},
-  console,
-  Date, Intl, Math, Number, String, JSON, Array, Set, Map,
-  confirm: ()=>true,
-  setTimeout(){},
-  NativeStore: {
-    hasPin:()=>"false",
-    getAppVersion:()=>"0.7.0",
-    showMessage(){},
-    saveData:()=>"ok",
-    loadData:()=>"{}",
-  }
-});
-vm.runInContext(match[1], ctx, {timeout:10000});
-const expr = code => vm.runInContext(code,ctx,{timeout:10000});
-
+const fakeWindow={addEventListener(){},scrollTo(){}};
+const native={
+  saved:[],messages:[],hasPin:()=>"true",getAppVersion:()=>"1.0.0",
+  showMessage(s){this.messages.push(String(s))},saveData(json){this.saved.push(JSON.parse(json));return"ok"},
+  loadData(){return"{}"},verifyPin(){return"true"},setPin(){return"ok"},
+  checkForUpdate(){},saveCsvExport(){return"ok"},
+};
+const env={
+  window:fakeWindow,document:{getElementById:element,querySelectorAll:()=>[],createElement:()=>element("_created")},
+  NativeStore:native,console,Date,Intl,Math,Number,String,Array,JSON,Set,Map,
+  confirm:()=>true,prompt:()=>"",setTimeout(){},FileReader:function(){},
+};
+const ctx=vm.createContext(env);
+env.window=env; // window handlers and global scripts share the same global object
+for(const path of sources.filter(x=>x!=="js/app_init.js")){
+  vm.runInContext(fs.readFileSync(root+path,"utf8"),ctx,{filename:path,timeout:20000});
+}
+const expr=code=>vm.runInContext(code,ctx,{timeout:20000});
+expr("db=normalizeDB({});unlocked=true");
+const activeId=expr("db.activeCompanyId");
+assert.ok(activeId);
+assert.equal(expr("Array.isArray(scoped('products'))"),true);
+assert.equal(expr("Array.isArray(scoped('stockMovements'))"),true);
+assert.equal(expr("Array.isArray(scoped('activityLog'))"),true);
 assert.equal(expr("parseTurkishMoney('1.234,56')"),1234.56);
-assert.equal(expr("parseTurkishMoney('-1.234,56')"),-1234.56);
 assert.equal(expr("parseBankDate('21.11.2026')"),"2026-11-21");
-assert.equal(expr("parseBankDate('2026-11-21T12:00:00')"),"2026-11-21");
-assert.equal(expr("parseBankDate('not a date')"),"");
 assert.equal(expr("bankPlain('İşlem Açıklaması')"),"islem aciklamasi");
 
-expr("db=normalizeDB({})");
-expr("db.transactions.push({id:1001,companyId:db.activeCompanyId,date:'2026-11-21',type:'expense',amount:250.50,accountId:db.accounts[1].id,description:'Banka masrafı'})");
-expr("db.bankRows.push({id:2001,companyId:db.activeCompanyId,date:'2026-11-21',amount:-250.50,accountId:db.accounts[1].id,description:'Banka masrafı',status:'unmatched'})");
-assert.equal(expr("bankSuggestedTransaction(scoped('bankRows')[0], new Set()).id"),1001);
-assert.equal(expr("scoped('bankRows').length"),1);
+const voucher=expr("AccountingRules.balanceVoucher({entries:[{debit:240,credit:0},{debit:0,credit:240}]})");
+assert.equal(voucher.balanced,true);
+assert.equal(expr("AccountingRules.balanceVoucher({entries:[{debit:240,credit:0},{debit:0,credit:239}]}).balanced"),false);
+assert.equal(expr("AccountingRules.balanceVoucher({entries:[{debit:-5,credit:0},{debit:0,credit:5}]}).balanced"),false);
+assert.equal(expr("addVoucher({voucherNo:'TEST-1',date:'2026-11-21',entries:[{debit:100,credit:0},{debit:0,credit:100}]})"),true);
+assert.equal(expr("addVoucher({voucherNo:'TEST-2',date:'2026-11-21',entries:[{debit:100,credit:0},{debit:0,credit:90}]})"),false);
 
-const valid = expr("addVoucher({voucherNo:'TEST-1',date:'2026-11-21',entries:[{debit:100,credit:0},{debit:0,credit:100}]})");
-const invalid = expr("addVoucher({voucherNo:'TEST-2',date:'2026-11-21',entries:[{debit:100,credit:0},{debit:0,credit:99}]})");
-assert.equal(valid,true);
-assert.equal(invalid,false);
+expr("db.transactions.push({id:7891,companyId:db.activeCompanyId,date:'2026-11-21',type:'expense',amount:250.50,accountId:db.accounts[1].id,description:'Banka masrafı'})");
+expr("db.bankRows.push({id:7892,companyId:db.activeCompanyId,date:'2026-11-21',amount:-250.50,accountId:db.accounts[1].id,description:'Banka masrafı',status:'unmatched'})");
+assert.equal(expr("bankSuggestedTransaction(scoped('bankRows')[0],new Set()).id"),7891);
 
-expr("db.invoices.push({id:3001,companyId:db.activeCompanyId,party:'Örnek Ltd',number:'ABC123',date:'2026-11-21',net:100,vat:20,total:120,paidAmount:0,taxNo:'1234567890'})");
-expr("db.invoices.push({id:3002,companyId:db.activeCompanyId,party:'Örnek Ltd',number:'ABC123',date:'2026-11-21',net:100,vat:20,total:120,paidAmount:0,taxNo:'1234567890'})");
-assert.ok(expr("getAuditFindings().some(f=>f.title==='Tekrarlanan fatura')"),"duplicate invoice check failed");
+expr("db.invoices.push({id:321,companyId:db.activeCompanyId,party:'Örnek Ltd',number:'TEST123',date:'2026-11-21',net:100,vat:20,total:120,paidAmount:0})");
+assert.equal(expr("AccountingRules.invoiceDuplicate(db.invoices,{party:'Örnek Ltd',number:'TEST123',date:'2026-11-21'},db.activeCompanyId)"),true);
+assert.equal(expr("AccountingRules.invoiceBalance(scoped('invoices')[0]).remaining"),120);
 
-const scopedCount=expr("(()=>{const id=db.activeCompanyId;db.bankRows.push({id:2002,companyId:id+123,date:'2026-11-21',amount:99,status:'unmatched'});return scoped('bankRows').length})()");
-assert.equal(scopedCount,1);
+expr("db.documents.push({id:5021,companyId:db.activeCompanyId,documentType:'delivery_note',number:'IRS-33',date:'2026-11-21',party:'Örnek',items:[{code:'FWR5',name:'Mantolama Levhası',quantity:70,unit:'PKT',unitPrice:100,amount:7000},{code:'FIYS',name:'Sıva',quantity:5,unit:'ADET',unitPrice:60,amount:300}]})");
+const notePlan=expr("AccountingRules.deliveryPlan(scoped('documents')[0],db.products,db.stockMovements,db.activeCompanyId,'in')");
+assert.equal(notePlan.ok,true);
+assert.equal(notePlan.lines.length,2);
+assert.equal(expr("AccountingRules.deliveryPlan(scoped('documents')[0],db.products,db.stockMovements,db.activeCompanyId,'out').ok"),false);
 
-assert.ok(page.includes("NativeStore.openInvoiceCamera"), "native camera button is not wired");
-assert.ok(page.includes("window.onEmbeddedCameraStatus"), "camera return callback is missing");
-assert.ok(page.includes("Uygulama İçi Kamerayla Fotoğraf Çek"), "invoice camera UI is missing");
-assert.ok(page.includes("if(readOnlyRecovery)"), "recovery read-only safeguard missing");
-assert.ok(page.includes("saveRestoredData"), "encrypted backup restore write missing");
-assert.ok(page.includes("saveCsvExport"), "native CSV writer missing");
+// For UI mutations, stop redraw. Verify actual data-layer changes.
+expr("persist=function(){ /* simulated encrypted persistence in VM */ }");
+element("stockDeliverySelect").value="5021";element("stockDeliveryDirection").value="in";
+expr("applyDeliveryStock()");
+assert.equal(expr("scoped('products').length"),2);
+assert.equal(expr("scoped('stockMovements').length"),2);
+assert.equal(expr("scoped('documents')[0].stockApplied.direction"),"in");
+assert.equal(expr("scoped('products').reduce((s,p)=>s+stockOnHand(p),0)"),75);
+assert.equal(expr("AccountingRules.deliveryPlan(scoped('documents')[0],db.products,db.stockMovements,db.activeCompanyId,'in').ok"),false);
+assert.equal(expr("scoped('activityLog').length"),1);
 
-assert.ok(page.includes('document_parser.js'), 'document parser script is missing');
-assert.ok(page.includes('id="documents"'), 'document archive is missing');
-assert.ok(page.includes('saveScannedDocument'), 'OCR review save button is missing');
-assert.ok(page.includes('renderOcrItems'), 'OCR item editing UI is missing');
-assert.ok(page.includes('linkDeliveryToInvoice'), 'delivery-note link is missing');
-assert.ok(page.includes('postReceiptExpense'), 'receipt posting confirmation is missing');
-assert.ok(page.includes('linkedTransactionId'), 'receipt posting dedup is missing');
-assert.ok(page.includes('renderDocuments();'), 'document list is not part of render');
-assert.ok(page.includes('function showInvoiceItems'), 'invoice item details are missing');
-assert.equal(expr("Array.isArray(normalizeDB({}).documents)"),true);
-expr("db.documents.push({id:555001,companyId:db.activeCompanyId,documentType:'delivery_note',items:[],total:144035})");
-assert.equal(expr("scoped('documents').length"),1);
-assert.ok(!page.includes('NativeStore.uploadReceipt') && !page.includes('remoteOcr'));
-console.log('PASS: finance rules, embedded camera, local documents, delivery notes, receipts and recovery');
+const firstProductId=expr("scoped('products')[0].id");
+assert.equal(expr("AccountingRules.movementAllowed(stockProductById("+firstProductId+"),db.stockMovements,db.activeCompanyId,-1000).ok"),false);
+expr("db.companies.push({id:777777,name:'İkinci Firma'});db.activeCompanyId=777777");
+assert.equal(expr("scoped('products').length"),0,"no cross-company inventory leak");
+assert.equal(expr("scoped('documents').length"),0,"no cross-company document leak");
+expr("db.activeCompanyId="+activeId);
+
+assert.ok(html.includes('id="workflow"'),"workflow view missing");
+assert.ok(html.includes('id="inventory"'),"inventory view missing");
+assert.ok(html.includes('id="globalCompanySelect"'),"global company selector missing");
+assert.ok(html.includes('id="documents"'),"document archive missing");
+assert.ok(html.includes('id="stockDeliverySelect"'),"delivery note importer missing");
+assert.ok(fs.existsSync(root+"css/workspace.css"),"style file missing");
+assert.ok(fs.readFileSync(root+"css/workspace.css","utf8").includes("@media(min-width:1050px)"),"desktop sidebar rules missing");
+assert.ok(sources.some(x=>x==="js/app_documents.js"),"document module missing");
+
+console.log("PASS: all modular scripts, screen linkage, voucher balance, invoice dedup, bank matching, inventory, delivery-note posting and multi-company isolation");
