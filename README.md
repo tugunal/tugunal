@@ -2,12 +2,13 @@
 
 Turkce, Android tabanli, cevrimdisi oncelikli muhasebe takip uygulamasi.
 
-## Surum 0.2.0 modulleri
+## Surum 0.3.0 modulleri
 
-- Firma / muhasebe burosu ayarlari
+- Birden fazla mukellef / firma profili ve firmalar arasi guvenli veri ayrimi
+- Firma kartlari: isletme turu, vergi dairesi, vergi numarasi/TCKN, iletisim, mali yil
 - Musteri ve tedarikci cari kartlari
 - Gelir ve gider kayitlari
-- Kasa, banka ve diger hesap bakiyeleri
+- Her firma icin ayri kasa, banka ve diger hesap bakiyeleri
 - Alis / satis fatura taslaklari, KDV ve vade takibi
 - Personel kayitlari
 - Brute dayali basit bordro on hesaplari
@@ -31,4 +32,4 @@ Bordro neti, girilen brut + ek odeme - kullanicinin girdigi kesintiler olarak he
 
 ## Veri guvenligi
 
-Uygulama kayitlari cihazda Android Keystore tabanli AES-GCM ile sifrelenir. Yedek dosyalari kullanicinin belirledigi parola ile PBKDF2-HMAC-SHA256 ve AES-GCM kullanilarak sifrelenir. Yedek parolasi unutulursa yedek acilamaz. Uygulama otomatik bulut senkronizasyonu yapmaz.
+Kayitlar aktif firma bazinda ayrilir ve cihazda Android Keystore tabanli AES-GCM ile sifrelenir. Yedek dosyalari kullanicinin belirledigi parola ile PBKDF2-HMAC-SHA256 ve AES-GCM kullanilarak sifrelenir. Yedek parolasi unutulursa yedek acilamaz. Uygulama otomatik bulut senkronizasyonu yapmaz.
