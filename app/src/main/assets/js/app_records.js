@@ -37,6 +37,7 @@ if(formKind==='voucher'){
  const ok=addVoucher({id,voucherNo:d.voucherNo||nextVoucherNo(),date:d.date||dateToday(),type:d.type||'Mahsup',description:d.description||'Manuel muhasebe fişi',party:d.party||'',sourceType:'manual',sourceId:id,entries:[{accountCode:debit.code,accountName:debit.name,debit:amount,credit:0},{accountCode:credit.code,accountName:credit.name,debit:0,credit:amount}]});if(!ok)return NativeStore.showMessage('Fiş dengesi sağlanamadı.');
 }
 if(formKind==='instrument'){if(!d.party||!d.number||Number(d.amount)<=0||!d.dueDate)return NativeStore.showMessage('Firma, belge numarası, tutar ve vade zorunludur.');db.instruments.unshift({...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),status:d.status||'pending'});}
+auditEvent('kayit_olusturuldu',formKind,id);
 if(!persist())return;
 if(formKind==='invoice'){pendingOcr=null;pendingOcrSourceDocumentId=0;}
 closeForm();NativeStore.showMessage('Kayıt eklendi.');}
@@ -78,6 +79,7 @@ function removeItem(type,id){
     }
  }
  db[type]=db[type].filter(x=>!sameId(x));
+ auditEvent('kayit_silindi',type,id);
  persist();
 }
 function listRows(items,type){if(!items.length)return '<div class="empty">Henüz kayıt bulunmuyor.</div>';return items.map(x=>{let title=x.description||x.name||x.party||x.title||x.number||x.employeeName||'Kayıt',sub=x.date||x.startDate||x.period||x.phone||'';let val='',extra='';
