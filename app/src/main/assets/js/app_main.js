@@ -96,7 +96,20 @@ let raw='';try{raw=NativeStore.loadData()}catch(e){raw='__DECRYPT_FAILED__'}
 if(raw==='__DECRYPT_FAILED__'){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Şifreli kayıtlar okunamadı. Veriler silinmedi. Yedekten geri yükleyin.');return}
 try{db=normalizeDB(JSON.parse(raw||'{}'))}catch(e){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Kayıt biçimi bozuk. Orijinal veri korunuyor. Yedekten geri yükleyin.');return}
 readOnlyRecovery=false;unlocked=true;migrateLegacyData();$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';persist();$('appVersionText').textContent=NativeStore.getAppVersion();setTimeout(()=>checkForUpdates(false),900)}
-function persist(){if(!unlocked)return;if(readOnlyRecovery){NativeStore.showMessage('Kayıtlar koruma modunda. Önce yedekten geri yükleyin.');render();return;}const result=NativeStore.saveData(JSON.stringify(db));if(result!=='ok'){if(result==='error_locked')readOnlyRecovery=true;NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Veriler korunuyor.');}render()}
+function persist(){
+ if(!unlocked)return false;
+ if(readOnlyRecovery){
+   NativeStore.showMessage('Kayıtlar koruma modunda. Önce yedekten geri yükleyin.');
+   render();return false;
+ }
+ const result=NativeStore.saveData(JSON.stringify(db));
+ if(result!=='ok'){
+   if(result==='error_locked')readOnlyRecovery=true;
+   NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Veriler korunuyor.');
+   render();return false;
+ }
+ render();return true;
+}
 let availableUpdate=null,updateCheckBusy=false;
 function setUpdateStatus(message){if($('updateStatus'))$('updateStatus').textContent=message;if($('settingsUpdateStatus'))$('settingsUpdateStatus').textContent=message;}
 function setUpdateButtons(visible){$('installUpdateButton')?.classList.toggle('hidden',!visible);$('settingsInstallUpdateButton')?.classList.toggle('hidden',!visible);}
