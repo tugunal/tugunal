@@ -33,7 +33,7 @@ function element(id){
 }
 const fakeWindow={addEventListener(){},scrollTo(){}};
 const native={
-  saved:[],messages:[],failNextSave:false,hasPin:()=>"true",getAppVersion:()=>"1.2.0",
+  saved:[],messages:[],failNextSave:false,hasPin:()=>"true",currentLocalUser:()=>"test_accountant",getAppVersion:()=>"1.2.0",
   showMessage(s){this.messages.push(String(s))},saveData(json){if(this.failNextSave){this.failNextSave=false;return"error"}this.saved.push(JSON.parse(json));return"ok"},
   loadData(){return"{}"},verifyPin(){return"true"},setPin(){return"ok"},
   checkForUpdate(){},saveCsvExport(){return"ok"},
@@ -99,15 +99,20 @@ assert.equal(expr("scoped('documents')[0].stockApplied.direction"),"in");
 assert.equal(expr("scoped('products').reduce((s,p)=>s+stockOnHand(p),0)"),75);
 assert.equal(expr("AccountingRules.deliveryPlan(scoped('documents')[0],db.products,db.stockMovements,db.activeCompanyId,'in').ok"),false);
 assert.equal(expr("scoped('activityLog').length"),1);
+assert.equal(expr("scoped('activityLog')[0].actor"),"test_accountant","Audit event must record the current user");
+assert.equal(expr("scoped('activityLog')[0].companyId"),activeId,"Audit event must belong to the current firm");
 
 const firstProductId=expr("scoped('products')[0].id");
 assert.equal(expr("AccountingRules.movementAllowed(stockProductById("+firstProductId+"),db.stockMovements,db.activeCompanyId,-1000).ok"),false);
 expr("db.companies.push({id:777777,name:'İkinci Firma'});db.activeCompanyId=777777");
 assert.equal(expr("scoped('products').length"),0,"no cross-company inventory leak");
 assert.equal(expr("scoped('documents').length"),0,"no cross-company document leak");
+assert.equal(expr("scoped('activityLog').length"),0,"no cross-company activity log leak");
 expr("db.activeCompanyId="+activeId);
 
 assert.ok(html.includes('id="registrationPanel"'),"first-run registration panel missing");
+assert.ok(html.includes('id="localAccessDisclosure"'),"shared local account data warning must be shown at registration");
+assert.ok(html.includes('id="localAccessStatus"'),"settings must disclose missing role-based permissions");
 assert.ok(html.includes('id="regFirstName"'),"registration first name field missing");
 assert.ok(html.includes('id="regLastName"'),"registration last name field missing");
 assert.ok(html.includes('id="regEmail"'),"registration email field missing");
@@ -218,6 +223,8 @@ assert.equal(expr("duplicateAppAccount([{id:1,username:'kisi',email:'kisi@hotmai
 assert.equal(expr("typeof submitPin"),"function");
 assert.equal(expr("typeof submitRegistration"),"function");
 assert.equal(expr("typeof loginLegacyAccount"),"function");
+assert.equal(expr("typeof auditEvent"),"function");
+assert.equal(expr("typeof stockLog"),"function");
 
 // Confidential accounting data must be cleared when a session is locked.
 expr("db.transactions.push({id:889922,companyId:db.activeCompanyId,date:'2026-11-21',amount:250,type:'income'})");
