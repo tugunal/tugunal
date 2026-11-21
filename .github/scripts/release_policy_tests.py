@@ -41,4 +41,9 @@ demand('verifyUpdateApkIdentity(target)' in java,
 demand('name.equals("AkilliMuhasebe-v" + latestVersion + ".apk")' in java,
        "Updater must use only the exact signed release asset")
 demand("private void verifyUpdateApkIdentity" in java, "Signature comparison missing")
+html = Path("app/src/main/assets/index.html").read_text(encoding="utf-8")
+v = re.search(r'versionName "([^"]+)"', GRADLE).group(1)
+demand("AKILLI MUHASEBE • v" + v in html, "Header must show the exact APK release version")
+demand('id="updateVersionBadge">v' + v in html, "Update badge must show the exact APK release version")
+demand('id="appVersionText">' + v in html, "Settings version must match the Android release")
 print("PASS: One permanent signed application, one package ID, one distributable APK")
