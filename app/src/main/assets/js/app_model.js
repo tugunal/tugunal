@@ -29,7 +29,21 @@ function normalizeDB(data){
 }
 function activeCompany(){return db.companies.find(c=>Number(c.id)===Number(db.activeCompanyId))||db.companies[0]}
 function scoped(type){return (db[type]||[]).filter(x=>Number(x.companyId)===Number(db.activeCompanyId))}
-function switchCompany(id){db.activeCompanyId=Number(id);pendingBank=null;pendingOcr=null;clearBankPreview();if($('ocrPreview'))$('ocrPreview').classList.add('hidden');migrateLegacyData();persist()}
+function switchCompany(id){
+ if(!unlocked||readOnlyRecovery)return false;
+ const company=db.companies.find(c=>Number(c.id)===Number(id));
+ if(!company)return false;
+ if(Number(db.activeCompanyId)===Number(company.id))return true;
+ // Preserve uncommitted previews if switching firms fails to save.
+ db.activeCompanyId=company.id;
+ migrateLegacyData();
+ if(!persist())return false;
+ pendingBank=null;pendingOcr=null;pendingOcrSourceDocumentId=0;editingDocumentId=0;
+ clearBankPreview();
+ if($('ocrPreview'))$('ocrPreview').classList.add('hidden');
+ render();
+ return true;
+}
 function chartAccount(code){return scoped('chartAccounts').find(x=>String(x.code)===String(code))}
 function chartOptions(){return scoped('chartAccounts').map(a=>'<option value="'+esc(a.code)+'">'+esc(a.code+' - '+a.name)+'</option>').join('')}
 function customerOptions(){return '<option value="">Cari seç (isteğe bağlı)</option>'+scoped('customers').map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')}
