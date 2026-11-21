@@ -175,6 +175,16 @@ assert.ok(nativeSource.includes("public String authenticateLocalAccount("),"nati
 assert.ok(nativeSource.includes("public String updateLocalAccountContact("),"profile contact changes must update login identities");
 assert.ok(nativeSource.includes("public String changeLocalAccountPassword("),"per-user password change missing");
 assert.ok(nativeSource.includes("derivePinHash(password, salt)"),"passwords must have salted PBKDF2 hashes");
+assert.ok(nativeSource.includes("public String rollbackLocalRegistration("),"uncommitted account credentials must be reversible");
+assert.ok(nativeSource.includes('pendingLocalRegistrationUsername = "";'),"pending account marker must be cleared after successful save");
+assert.ok(nativeSource.includes('.putString("encrypted_db", encrypted).commit()'),"encrypted data save must be synchronous and verified");
+assert.ok(nativeSource.includes('pin.length() > 64'),"initial local PIN must accept 64-character account password");
+assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes('const newPassword=prompt('),
+  "legacy PIN migration must prompt for a new, stronger account password");
+assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes("showEncryptedRecordRecovery("),
+  "corrupt encrypted records must open protected recovery");
+assert.ok(fs.readFileSync(root+"js/app_main.js","utf8").includes("render();return true;"),
+  "persistence must report actual success to profile editor");
 assert.ok(nativeSource.includes("encryptLocalData(accounts.toString())"),"auth registry must be Keystore encrypted");
 assert.ok(nativeSource.includes("activeLocalUsername"),"native account binding missing");
 assert.ok(!nativeSource.includes('put("password"'),"plain-text password storage forbidden");
