@@ -2,30 +2,36 @@
 
 Turkce, Android tabanli, cevrimdisi oncelikli muhasebe takip uygulamasi.
 
-## Surum 0.4.0 modulleri
+## Surum 0.5.0 modulleri
 
 - Birden fazla mukellef / firma profili ve firma bazli veri ayrimi
 - Firma kartlari: isletme turu, vergi dairesi, vergi numarasi/TCKN, iletisim, mali yil
-- Musteri ve tedarikci cari kartlari
-- Gelir ve gider kayitlari
-- Her firma icin ayri kasa, banka ve diger hesap bakiyeleri
-- Alis / satis fatura taslaklari, KDV ve vade takibi
+- Musteri ve tedarikci cari kartlari; acilis alacagi ve borcu
+- Gelir ve gider kayitlari; kasa ve banka bakiyeleri
+- Alis / satis fatura taslaklari, KDV, vade ve odeme tutari takibi
 - Fatura fotografi icin cihaz uzerinde OCR metin tanima (Latin alfabesi)
 - OCR ile onerilen fatura numarasi, vergi no, tarih, matrah ve KDV alanlari
-- OCR sonucunu kaydetmeden once kullanici kontrolu ve duzeltme
-- Personel kayitlari
-- Brute dayali basit bordro on hesaplari
+- Otomatik cift tarafli muhasebe fis taslaklari; borc/alacak esitligi kontrolu
+- Cari hesap hareketleri, musteri tahsilati ve tedarikci odemesi
+- Cek ve senet kaydi; vade ve durum takibi
+- Gunluk kasa defteri; acilis, tahsilat, odeme ve kapanis bakiyesi
+- Aylik gelir-gider karsilastirmasi ve degisim orani
+- Vadesi gecen faturalar icin uygulama ici uyari
+- Personel kayitlari ve basit bordro on hesaplari
 - Demirbas ve dogrusal amortisman tahmini
 - Vergi / odeme hatirlatmalari
-- Gelir-gider, KDV, varlik ve personel ozet raporlari
 - CSV disari aktarma
 - PIN girisi ve arka planda kalinca otomatik kilitleme
 - Android Keystore ile yerel veritabani sifreleme
 - Parola tabanli AES-GCM sifreli yedekleme ve geri yukleme
 
+## Muhasebe otomasyonu sinirlari
+
+Otomatik fisler on taslaktir; hesap kodlari ve kayitlar yetkili muhasebe meslek mensubu tarafindan kontrol edilmelidir. Uygulama resmi yevmiye defteri veya kebir defteri kaydi yapmaz. Cek/senet durumu degistirmek banka tahsilati veya odemesi gerceklestirmez; fiili hareket ayri kaydedilmelidir.
+
 ## OCR sinirlari
 
-Fatura fotoğraflarindaki metin cihazda ML Kit ile okunur. Ilk surum yalnizca Latin alfabesi OCR modelini icerir; basili ve net faturalar icin uygundur. El yazisi, dusuk cozunurluk, egik veya cok karmaşık faturalar yanlis okunabilir. OCR sonucu otomatik olarak resmi kayit veya beyanname sayilmaz; muhasebeci her alani kontrol edip onaylamalidir. PDF fatura dosyalarinin dogrudan OCR ile okunmasi bu surumde yoktur.
+Fatura fotograflarindaki metin cihazda ML Kit ile okunur. Ilk surum yalnizca Latin alfabesi OCR modelini icerir; basili ve net faturalar icin uygundur. El yazisi, dusuk cozunurluk, egik veya cok karmasik faturalar yanlis okunabilir. OCR sonucu otomatik olarak resmi kayit veya beyanname sayilmaz; muhasebeci her alani kontrol edip onaylamalidir. PDF fatura dosyalarinin dogrudan OCR ile okunmasi bu surumde yoktur.
 
 ## APK derlemesi
 

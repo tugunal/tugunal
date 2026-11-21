@@ -522,7 +522,7 @@ public class MainActivity extends Activity {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.4.0";
+                return "0.5.0";
             }
         }
 
