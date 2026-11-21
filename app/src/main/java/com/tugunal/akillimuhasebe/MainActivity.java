@@ -71,6 +71,8 @@ public class MainActivity extends Activity {
     private static final String PREFS = "akilli_muhasebe_secure";
     private static final String LOCAL_ACCOUNTS_KEY = "encrypted_auth_accounts_v1";
     private volatile String activeLocalUsername = "";
+    // New account credentials stay reversible until the encrypted profile is saved.
+    private volatile String pendingLocalRegistrationUsername = "";
     private volatile int failedAccountAttempts = 0;
     private volatile long accountLockUntil = 0L;
 
@@ -992,6 +994,34 @@ public class MainActivity extends Activity {
                 accounts.put(account);
                 if (!storeLocalAccounts(accounts)) return "error";
                 activeLocalUsername = u;
+                pendingLocalRegistrationUsername = u;
+                return "ok";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        /**
+         * Remove ONLY the just-created credential when the matching encrypted profile
+         * could not be saved. A successful saveData call clears the pending marker.
+         */
+        @JavascriptInterface
+        public String rollbackLocalRegistration(String username) {
+            String u = normalizeAccountName(username);
+            if (!nativeUnlocked || !u.equals(activeLocalUsername)
+                    || !u.equals(pendingLocalRegistrationUsername)) return "locked";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                int index = findLocalAccountIndex(accounts, u);
+                if (index < 0) return "not_found";
+                JSONArray remaining = new JSONArray();
+                for (int i = 0; i < accounts.length(); i++) {
+                    if (i != index) remaining.put(accounts.get(i));
+                }
+                if (!storeLocalAccounts(remaining)) return "error";
+                pendingLocalRegistrationUsername = "";
+                activeLocalUsername = "";
+                nativeUnlocked = false;
                 return "ok";
             } catch (Exception ex) {
                 return "error";
@@ -1160,6 +1190,7 @@ public class MainActivity extends Activity {
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                         .putString("encrypted_db", encrypted).commit();
+                if (saved) pendingLocalRegistrationUsername = "";
                 return saved ? "ok" : "error";
             } catch (Exception ex) {
                 return "error";
