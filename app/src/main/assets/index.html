@@ -10,7 +10,7 @@
 <div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
 
 <aside class="sidebar" aria-label="Muhasebe çalışma alanı">
-  <div class="logo-mark"><span class="logo-symbol">▥</span><span class="logo-name">AKILLI MUHASEBE<small>1.0 • Profesyonel çalışma alanı</small></span></div>
+  <div class="logo-mark"><span class="logo-symbol">▥</span><span class="logo-name">AKILLI MUHASEBE<small>1.2 • Profesyonel çalışma alanı</small></span></div>
   <div class="side-nav">
     <div class="side-group">Çalışma Masası</div>
     <button data-view="dashboard" onclick="showView('dashboard')" class="active"><span>⌂</span>Genel Bakış</button>
@@ -39,7 +39,7 @@
 </aside>
 <div class="workspace">
 <header>
-  <div class="toprow"><small>AKILLI MUHASEBE • v1.0.1</small><span class="pill" id="companyStatusPill">● Cihazda kayıt</span></div>
+  <div class="toprow"><small>AKILLI MUHASEBE • v1.2.0</small><span class="pill" id="companyStatusPill">● Cihazda kayıt</span></div>
   <h1 id="currentViewTitle">Genel Bakış</h1>
   <small><span id="companyTitle">Mali Durum Özeti</span> · <span id="today"></span></small>
   <div class="global-company-bar"><label for="globalCompanySelect">Çalışılan firma</label>
@@ -59,7 +59,7 @@
 <div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
 </div>
 <div class="panel update-card" style="margin-top:12px">
-  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v1.0.1</span></div>
+  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v1.2.0</span></div>
   <p class="muted" id="updateStatus">Yeni sürüm kontrolü yapılmadı.</p>
   <div class="toolbar">
     <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
@@ -90,7 +90,7 @@
 <section id="workflow" class="view">
   <div class="section"><h2>İş Akışı ve Bekleyenler</h2><button onclick="showView('invoices')">+ Belge okut</button></div>
   <div class="workspace-banner"><span style="font-size:22px">→</span><div><b>Tek sefer veri girişi</b>
-    Fotoğraf / PDF / XML (henüz etkin değil) → Belge kontrolü → Cari / İrsaliye → Fatura → Ödeme → Taslak fiş → Raporlar.</div></div>
+    Fotoğraf / PDF / e-Fatura XML → Belge kontrolü → Cari / İrsaliye → Fatura → Ödeme → Taslak fiş → Raporlar.</div></div>
   <div id="workflowStatus" class="pipeline" style="margin-top:16px"></div>
   <div class="section"><h2>Kontrol özeti</h2><button onclick="showView('audit')">Tüm kontroller</button></div>
   <div class="panel" id="workflowReadiness"></div>
@@ -110,8 +110,10 @@
   <div class="field">
   <label>PDF faturayı oku (ilk 3 sayfa)</label>
   <input id="invoicePdf" type="file" accept="application/pdf,.pdf" onchange="handleInvoicePdf(event)">
+  <label style="margin-top:10px">UBL-TR e-Fatura / e-Arşiv XML dosyası (ürün kalemleriyle)</label>
+  <input id="ublInvoice" type="file" accept="application/xml,text/xml,.xml" onchange="handleUblFile(event)">
 </div>
-<div id="ocrStatus" class="muted">Henüz fotoğraf veya PDF seçilmedi.</div>
+<div id="ocrStatus" class="muted">Henüz fotoğraf, PDF veya XML seçilmedi.</div>
   <p class="muted">Fotoğraf, okumadan sonra geçici kameradan silinir. Muhasebe kayıtlarına yalnızca onayladığın bilgiler işlenir.</p>
   <div id="ocrPreview" class="hidden" style="margin-top:12px">
     <div id="ocrSummary" class="notice"></div>
@@ -268,6 +270,9 @@
 <section id="settings" class="view"><div class="section"><h2>Ayarlar ve yedekleme</h2></div><div class="panel">
 <div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
 <button class="btn" onclick="saveSettings()">Kaydet</button><hr>
+<div class="panel" style="margin-bottom:12px"><b>PIN güvenliği</b>
+<p class="muted">PIN kodunu değiştirmek kayıtları silmez. Mevcut PIN gereklidir.</p>
+<button class="btn secondary" onclick="changeSecurityPin()">PIN kodunu değiştir</button></div>
 <div id="recoveryWarning" class="notice hidden" style="color:#9f1239;border-color:#f2b8c6;margin-bottom:12px"><b>Veri koruma modu</b><p>Şifreli yerel kayıt okunamadı. Eski kayıtların üzerine yazılmadı. Buradan daha önce aldığın şifreli yedeği geri yükle. Yedek olmadan uygulamayı kaldırma.</p></div><div class="notice">Yedek dosyası parola ile şifrelenir. Yedekleme parolasını unutmayın; parola olmadan yedek açılamaz. <b>Yeni sürüme geçmeden önce yedeği oluşturup doğrulayın.</b></div>
 <div class="section"><h2>Uygulama güncellemesi</h2></div>
 <div class="panel">
@@ -281,7 +286,7 @@
 <div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
 <hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
 <button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
-<p class="muted">Sürüm <span id="appVersionText">1.0.1</span> • Cihazda şifreli kayıt • Resmî gönderim etkin değil</p>
+<p class="muted">Sürüm <span id="appVersionText">1.2.0</span> • Cihazda şifreli kayıt • Resmî gönderim etkin değil</p>
 </div></section>
 </main>
 
@@ -299,6 +304,7 @@
 </div></div>
 
 <script src="document_parser.js"></script>
+<script src="ubl_parser.js"></script>
 <script src="js/accounting_rules.js"></script>
 <script src="js/app_model.js"></script>
 <script src="js/app_main.js"></script>
