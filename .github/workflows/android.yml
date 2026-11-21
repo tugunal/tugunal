@@ -38,6 +38,14 @@ jobs:
           yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Gradle kurulumunu dogrula
+        run: |
+          if ! command -v gradle >/dev/null 2>&1; then
+            echo "Bu runner imajinda Gradle bulunamadi."
+            exit 1
+          fi
+          gradle --version
+
       - name: Web arayuz JavaScript kontrolu
         run: |
           python3 - <<'PY'
@@ -82,11 +90,6 @@ jobs:
               ET.parse(path)
               print("OK:", path)
           PY
-
-      - name: Gradle 8.9 kur
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.9"
 
       - name: APK derle
         run: gradle --no-daemon clean assembleDebug
