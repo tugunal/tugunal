@@ -98,6 +98,7 @@ function finishAuthenticatedSession(data,profile){
  migrateLegacyData();
  const result=NativeStore.saveData(JSON.stringify(db));
  if(result!=="ok")throw Error("Şifreli verilerin kaydı doğrulanamadı. Yedek alın.");
+ if(typeof rememberDurableDB==="function")rememberDurableDB();
  unlocked=true;
  $("lock").classList.add("hidden");
  $("pinInput").value="";$("regPin").value="";$("regPinConfirm").value="";
