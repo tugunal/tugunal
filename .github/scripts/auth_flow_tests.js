@@ -65,6 +65,7 @@ const ctx=vm.createContext({
  newRecordId(){return ++seq},
  normalizeDB(data){return {...data,settings:data.settings||{}}},
  migrateLegacyData(){},render(){},showView(){},checkForUpdates(){},
+ persist(){store.saveData(JSON.stringify(ctx.db));},
  setTimeout(){},prompt(_s,defaultName){return defaultName||"olduser_2"},
  roleLabel:r=>r,console,
  showAuthChoice(){},submitRegistration(){},submitPin(){},renderUserProfile(){},
