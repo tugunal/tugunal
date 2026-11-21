@@ -20,7 +20,6 @@ if(formKind==='invoice'){
  addLedgerEntry({customerId:customer.id,party:customer.name,kind:d.type==='sale'?'receivable':'payable',amount:total,date:d.date,description:'Fatura '+(d.number||''),sourceType:'invoice',sourceId:id});
  addInvoiceVoucher(inv);
  if(paid>0){const paymentId=newRecordId();const tx={id:paymentId,companyId:db.activeCompanyId,date:d.date||dateToday(),type:d.type==='sale'?'income':'expense',description:(d.type==='sale'?'Fatura tahsilatı ':'Fatura ödemesi ')+(d.number||''),amount:paid,category:d.type==='sale'?'Fatura tahsilatı':'Fatura ödemesi',party:customer.name,accountId:Number(d.accountId)||scoped('accounts')[0]?.id,customerId:customer.id,sourceType:'invoice-payment',sourceId:id};db.transactions.unshift(tx);addLedgerEntry({customerId:customer.id,party:customer.name,kind:d.type==='sale'?'receivable':'payable',amount:-paid,date:d.date,description:d.type==='sale'?'Fatura tahsilatı':'Tedarikçi ödemesi',sourceType:'invoice-payment',sourceId:id});addTransactionVoucher(tx);}
- pendingOcr=null;pendingOcrSourceDocumentId=0;
 }
 if(formKind==='employee'){if(!d.name)return NativeStore.showMessage('Personel adı girin.');d.gross=Number(d.gross)||0;db.employees.unshift({...d,id,companyId:db.activeCompanyId});}
 if(formKind==='payroll'){const e=scoped('employees').find(x=>x.id===Number(d.employeeId));if(!e)return NativeStore.showMessage('Önce personel kaydı ekleyin.');const gross=Number(d.gross||e.gross)||0,extras=Number(d.extras)||0,deductions=Number(d.deductions)||0;if(gross+extras<deductions)return NativeStore.showMessage('Kesintiler toplam kazançtan fazla olamaz.');db.payroll.unshift({...d,id,companyId:db.activeCompanyId,employeeName:e.name,gross,extras,deductions,net:gross+extras-deductions});}
@@ -38,7 +37,9 @@ if(formKind==='voucher'){
  const ok=addVoucher({id,voucherNo:d.voucherNo||nextVoucherNo(),date:d.date||dateToday(),type:d.type||'Mahsup',description:d.description||'Manuel muhasebe fişi',party:d.party||'',sourceType:'manual',sourceId:id,entries:[{accountCode:debit.code,accountName:debit.name,debit:amount,credit:0},{accountCode:credit.code,accountName:credit.name,debit:0,credit:amount}]});if(!ok)return NativeStore.showMessage('Fiş dengesi sağlanamadı.');
 }
 if(formKind==='instrument'){if(!d.party||!d.number||Number(d.amount)<=0||!d.dueDate)return NativeStore.showMessage('Firma, belge numarası, tutar ve vade zorunludur.');db.instruments.unshift({...d,id,companyId:db.activeCompanyId,amount:Number(d.amount),status:d.status||'pending'});}
-closeForm();persist();NativeStore.showMessage('Kayıt eklendi.');}
+if(!persist())return;
+if(formKind==='invoice'){pendingOcr=null;pendingOcrSourceDocumentId=0;}
+closeForm();NativeStore.showMessage('Kayıt eklendi.');}
 function removeItem(type,id){
  if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modunda silme işlemi kapalı.');
  const allowed=['transactions','invoices','customers','vouchers','employees','payroll','accounts','assets','reminders','instruments','payrollEstimates','officialTasks'];
