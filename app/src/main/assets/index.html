@@ -141,7 +141,7 @@ let db=JSON.parse(JSON.stringify(emptyDB)),unlocked=false,formKind='',overdueNot
 const money=n=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY'}).format(Number(n)||0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dateToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
-function defaultChartFor(companyId){return DEFAULT_CHART.map((x,i)=>({id:Number(String(companyId).slice(-8))+i+1,companyId,code:x[0],name:x[1]}))}
+function defaultChartFor(companyId){return DEFAULT_CHART.map((x,i)=>({id:Number(companyId)*100+i+1,companyId,code:x[0],name:x[1]}))}
 function normalizeDB(data){
  const d=Object.assign({},JSON.parse(JSON.stringify(emptyDB)),data||{});
  for(const k of ['companies','customers','transactions','invoices','reminders','employees','payroll','accounts','assets','chartAccounts','ledgerEntries','vouchers','instruments'])if(!Array.isArray(d[k]))d[k]=[];
@@ -210,7 +210,7 @@ function findInvoiceAmount(text,labels){for(const label of labels){const re=new 
 function parseInvoiceText(text){const tax=(text.match(/(?:VKN|Vergi\s*No\.?|Vergi\s*Numarası|TCKN|T\.?C\.?\s*Kimlik\s*No)\s*[:\-]?\s*(\d{10,11})/i)||[])[1]||'';const number=(text.match(/(?:Fatura\s*(?:No|Numarası|Numarasi)|Belge\s*No|Invoice\s*No)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-\/]{3,})/i)||[])[1]||'';let dateText=(text.match(/(?:Fatura\s*Tarihi|Düzenleme\s*Tarihi|Belge\s*Tarihi)\s*[:\-]?\s*(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})/i)||[])[1]||'';if(!dateText)dateText=(text.match(/\b(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{4})\b/)||[])[1]||'';let iso='';if(dateText){const p=dateText.split(/[.\/-]/);if(p.length===3)iso=p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
 let vatRate=(text.match(/(?:KDV|KDV Oranı|KDV Orani)\s*[:(]?\s*%?\s*(\d{1,2})\s*%?/i)||[])[1]||'';if(!vatRate){const m=text.match(/%\s*(\d{1,2})\b/);if(m)vatRate=m[1];}
 const net=findInvoiceAmount(text,['Mal\\s*Hizmet\\s*Toplam\\s*Tutarı','Mal\\s*Hizmet\\s*Toplam\\s*Tutari','Vergi\\s*Hariç\\s*(?:Toplam\\s*)?Tutarı','Vergi\\s*Haric\\s*(?:Toplam\\s*)?Tutari','Ara\\s*Toplam','Matrah']);const vat=findInvoiceAmount(text,['Hesaplanan\\s*KDV','Toplam\\s*KDV','KDV\\s*Tutarı','KDV\\s*Tutari']);const total=findInvoiceAmount(text,['Vergiler\\s*Dahil\\s*Toplam\\s*Tutarı','Vergiler\\s*Dahil\\s*Toplam\\s*Tutari','Ödenecek\\s*Tutar','Odenecek\\s*Tutar','Genel\\s*Toplam','Toplam\\s*Tutar']);let finalNet=net;if(!finalNet&&total&&vat)finalNet=Math.max(0,total-vat);if(!finalNet&&total&&vatRate)finalNet=total/(1+Number(vatRate)/100);if(!finalNet&&vat&&vatRate)finalNet=vat*100/Number(vatRate);
-const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const party=lines.find(x=>x.length>2&&x.length<70&&!/FATURA|E-ARŞİV|E-FATURA|SAYIN|TARİH|TARIH|VERGİ|VERGI|VKN|TCKN|TOPLAM|TEL|ADRES/i.test(x))||'';
+const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const party=lines.find(x=>x.length>2&&x.length<70&&!/FATURA|E-ARŞİV|E-FATURA|SAYIN|TARİH|TARIH|VERGİ|VERGI|VKN|TCKN|TOPLAM|KDV|HESAPLANAN|MAL HİZMET|MAL HIZMET|TUTAR|MATRAH|ÖDENECEK|ODENECEK|TEL|ADRES/i.test(x))||'';
 return {number,party,taxNo:tax,date:iso,net:finalNet?finalNet.toFixed(2):'',vatRate:vatRate?String(Number(vatRate)):'',vat,total};}
 function useOcrInvoice(){if(!pendingOcr)return;openForm('invoice');}
 function clearOcr(){pendingOcr=null;$('invoiceImage').value='';$('ocrPreview').classList.add('hidden');$('ocrStatus').textContent='Henüz fotoğraf seçilmedi.';}
