@@ -206,6 +206,11 @@ assert.ok(nativeSource.includes("derivePinHash(password, salt)"),"passwords must
 assert.ok(nativeSource.includes("public String rollbackLocalRegistration("),"uncommitted account credentials must be reversible");
 assert.ok(nativeSource.includes('pendingLocalRegistrationUsername = "";'),"pending account marker must be cleared after successful save");
 assert.ok(nativeSource.includes('.putString("encrypted_db", encrypted).commit()'),"encrypted data save must be synchronous and verified");
+assert.ok(nativeSource.includes('if (json == null || json.trim().isEmpty()) return "error_format";'),
+  "empty accounting payloads must not overwrite encrypted records");
+assert.ok(nativeSource.includes('parsed.optJSONArray("companies") == null') &&
+  nativeSource.includes('parsed.optJSONArray("transactions") == null'),
+  "malformed accounting schema must not be stored or restored");
 assert.ok(nativeSource.includes('pin.length() > 64'),"initial local PIN must accept 64-character account password");
 assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes('const newPassword=prompt('),
   "legacy PIN migration must prompt for a new, stronger account password");
