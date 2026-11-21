@@ -129,10 +129,12 @@ jobs:
       - name: Imzali APK derle
         if: steps.signing.outputs.available == 'true'
         run: |
-          gradle --no-daemon clean assembleRelease
+          gradle --no-daemon clean assembleRelease assembleInstallfix
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+          cp app/build/outputs/apk/installfix/app-installfix.apk "dist/AkilliMuhasebe-v${APP_VERSION}-KURULUM.apk"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}-KURULUM.apk"
 
       - name: Imza anahtari henuz ayarlanmadiysa test APK derle
         if: steps.signing.outputs.available != 'true'
@@ -144,9 +146,10 @@ jobs:
       - name: Yeni paket icin imzasiz Android release ve guvenilir imzalama araclarini hazirla
         if: steps.signing.outputs.available != 'true'
         run: |
-          gradle --no-daemon assembleRelease
+          gradle --no-daemon assembleRelease assembleInstallfix
           mkdir -p signing-input
           cp app/build/outputs/apk/release/app-release-unsigned.apk signing-input/AkilliMuhasebe-v${APP_VERSION}-STABLE-UNSIGNED.apk
+          cp app/build/outputs/apk/installfix/app-installfix-unsigned.apk signing-input/AkilliMuhasebe-v${APP_VERSION}-KURULUM-UNSIGNED.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" signing-input/apksigner.jar
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" signing-input/zipalign
           chmod 755 signing-input/zipalign

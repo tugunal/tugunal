@@ -190,3 +190,25 @@ Bu sürüm **GIB e-Fatura/e-Arsiv/e-Defter gondermez**, SGK bildirgesi hazirlayi
 ### Mobil kurulum
 
 Onceki `.stable` paketini kullaniyorsan ayni sertifika ile imzalanan v1.0.0 release APK'sini ustune kur; yedek alma tavsiye edilir. Onceki `.akillimuhasebe` debug paketi farkli uygulamadir; eski kayitlari sifreli yedekle tasiyip yeni `.stable` uygulamaya geri yukle. Imza sertifikasinin degismesi halinde Android kurulumu engeller; APK'yi zorla yuklemek icin eski verileri silme.
+
+## v1.0.1 - Android kurulum sorunu onarimi
+
+0.9.1 ve 1.0.0 icin dogrulanan release sertifikasi ayni olsa da Android uzerinde
+INSTALL_FAILED_UPDATE_INCOMPATIBLE, yukleme izinleri, depolama yetersizligi,
+cihaz surumu veya dosya aktarimi gibi sebeplerle kurulum reddedilebilir.
+Bu surumde iki ayri Android release paketi bulunur:
+
+- `release`: `com.tugunal.akillimuhasebe.stable`. Eski 0.9.1/1.0.0
+  kalici imzali uygulamaya ayni sertifika ile yukseltme.
+- `installfix`: `com.tugunal.akillimuhasebe.kurulum`. Tamamen ayri paket
+  kimligi, ekranda `Akilli Muhasebe Kurulum` adi. Eski uygulamanin yanina
+  kurulur. Eski uygulamanin verilerini silmez.
+- Her iki paketin ayni *kalici* release sertifikasiyla imzalanmasi gerekir.
+- Dosyalar user tarafindan APK olarak acilmalidir; ZIP veya unsigned APK
+  dogrudan kurulamaz.
+
+Kullaniciya mevcut uygulamayi silmesi soylenmez. Eski uygulamadan
+Ayarlar -> Sifreli Yedek -> Yeni Uygulamaya Yedekten Geri Yukle
+akisiyla tasinabilir. Eski uygulama kurulu olarak kalabilir.
+Yeni kurulum basarisizsa telefondaki tam hata mesaji / Android surumu
+incelenmelidir. Fiziksel cihazda test yapilmadan uyumluluk garanti edilemez.

@@ -10,8 +10,8 @@ android {
         applicationId "com.tugunal.akillimuhasebe"
         minSdk 26
         targetSdk 35
-        versionCode 12
-        versionName "1.0.0"
+        versionCode 13
+        versionName "1.0.1"
     }
 
     signingConfigs {
@@ -25,12 +25,19 @@ android {
 
     buildTypes {
         release {
-            // One-time migration build: keep the old debug install and its data intact.
-            // New stable builds use this permanent package ID and the same release key.
+            // Existing stable application: always preserve this ID for upgrades.
             applicationIdSuffix ".stable"
             if (System.getenv("ANDROID_KEYSTORE_PATH")) {
                 signingConfig signingConfigs.release
             }
+            minifyEnabled false
+        }
+        installfix {
+            // Parallel, clean installation when Android rejects the older build.
+            // Isolated from .stable and older test APKs. Existing records stay untouched.
+            initWith release
+            applicationIdSuffix ".kurulum"
+            matchingFallbacks = ['release']
             minifyEnabled false
         }
     }
