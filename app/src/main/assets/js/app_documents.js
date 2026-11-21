@@ -177,8 +177,8 @@ function saveScannedDocument(){
   }
   delete doc.text;
   if(doc.rawText)doc.rawText=String(doc.rawText).slice(0,180000);
-  clearOcr();persist();
-  showView('documents');
+  if(!persist())return;
+  clearOcr();showView('documents');
   NativeStore.showMessage('Belge bilgileri ve tüm ürün satırları kaydedildi.');
 }
 function editSavedDocument(id){
