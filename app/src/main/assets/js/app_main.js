@@ -96,18 +96,27 @@ let raw='';try{raw=NativeStore.loadData()}catch(e){raw='__DECRYPT_FAILED__'}
 if(raw==='__DECRYPT_FAILED__'){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Şifreli kayıtlar okunamadı. Veriler silinmedi. Yedekten geri yükleyin.');return}
 try{db=normalizeDB(JSON.parse(raw||'{}'))}catch(e){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Kayıt biçimi bozuk. Orijinal veri korunuyor. Yedekten geri yükleyin.');return}
 readOnlyRecovery=false;unlocked=true;migrateLegacyData();$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';persist();$('appVersionText').textContent=NativeStore.getAppVersion();setTimeout(()=>checkForUpdates(false),900)}
+// Last confirmed encrypted payload, retained only for this foreground session.
+// Failed native storage writes must not leave fictitious accounting entries visible.
+let lastDurableDbSnapshot=null;
+function rememberDurableDB(){lastDurableDbSnapshot=JSON.stringify(db);}
 function persist(){
  if(!unlocked)return false;
  if(readOnlyRecovery){
    NativeStore.showMessage('Kayıtlar koruma modunda. Önce yedekten geri yükleyin.');
    render();return false;
  }
- const result=NativeStore.saveData(JSON.stringify(db));
+ const payload=JSON.stringify(db);
+ const result=NativeStore.saveData(payload);
  if(result!=='ok'){
+   if(lastDurableDbSnapshot){
+     try{db=normalizeDB(JSON.parse(lastDurableDbSnapshot));}catch(_){}
+   }
    if(result==='error_locked')readOnlyRecovery=true;
-   NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Veriler korunuyor.');
+   NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Son doğrulanmış kayıtlar geri yüklendi.');
    render();return false;
  }
+ lastDurableDbSnapshot=payload;
  render();return true;
 }
 let availableUpdate=null,updateCheckBusy=false;
