@@ -118,6 +118,8 @@ assert.ok(html.includes('çevrimdışı kullanıcı profili oluşturduğunu'),"o
 assert.ok(html.includes('Kullanıcı Profili'),"profile settings entry missing");
 assert.ok(html.includes('Kullanıcı kaydını oluştur'),"register button missing");
 assert.ok(html.includes('id="pinLoginPanel"'),"existing PIN login remains available");
+assert.ok(/id="pinInput"[^>]*inputmode="text"/.test(html),"login keyboard must allow letters and numbers");
+assert.ok(html.includes('Harf ve rakam içeren parolanızı girin'),"login placeholder must explain alphanumeric password");
 assert.ok(html.includes('id="workflow"'),"workflow view missing");
 assert.ok(html.includes('id="inventory"'),"inventory view missing");
 assert.ok(html.includes('id="globalCompanySelect"'),"global company selector missing");
