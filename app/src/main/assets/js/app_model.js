@@ -1,7 +1,7 @@
 /* Akilli Muhasebe 1.0 — app_model.js */
 'use strict';
 const $=id=>document.getElementById(id);
-const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],bankRows:[],payrollEstimates:[],officialTasks:[],documents:[],products:[],stockMovements:[],activityLog:[],settings:{businessName:''}};
+const emptyDB={companies:[],activeCompanyId:null,customers:[],transactions:[],invoices:[],reminders:[],employees:[],payroll:[],accounts:[],assets:[],chartAccounts:[],ledgerEntries:[],vouchers:[],instruments:[],bankRows:[],payrollEstimates:[],officialTasks:[],documents:[],products:[],stockMovements:[],activityLog:[],settings:{businessName:'',userProfile:null}};
 const DEFAULT_CHART=[['100','Kasa'],['153','Ticari Mallar'],['102','Bankalar'],['108','Diğer Hazır Değerler'],['120','Alıcılar'],['191','İndirilecek KDV'],['320','Satıcılar'],['391','Hesaplanan KDV'],['600','Yurtiçi Satışlar'],['649','Diğer Olağan Gelir ve Kârlar'],['770','Genel Yönetim Giderleri']];
 let db=JSON.parse(JSON.stringify(emptyDB)),unlocked=false,formKind='',overdueNoticeShown=false,idSequence=Date.now(),readOnlyRecovery=false;
 function newRecordId(){idSequence=Math.max(Date.now(),idSequence+1);return idSequence;}

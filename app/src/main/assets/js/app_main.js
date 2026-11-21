@@ -1,5 +1,73 @@
 /* Akilli Muhasebe 1.0 — app_main.js */
-function bootstrap(){$('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const has=NativeStore.hasPin()==='true';$('lockText').textContent=has?'Devam etmek için PIN kodunuzu girin.':'Güvenli kullanım için en az 6 karakterli PIN belirleyin.';$('pinButton').textContent=has?'Giriş yap':'PIN oluştur'}
+function bootstrap(){
+ $('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+ const has=NativeStore.hasPin()==='true';
+ $('pinLoginPanel').classList.toggle('hidden',!has);
+ $('registrationPanel').classList.toggle('hidden',has);
+ $('lockText').textContent='Devam etmek için PIN kodunuzu girin.';
+ $('pinButton').textContent='Giriş yap';
+}
+function submitRegistration(event){
+ if(event)event.preventDefault();
+ const first=$('regFirstName').value.trim(),last=$('regLastName').value.trim(),
+ email=$('regEmail').value.trim().toLowerCase(),phone=$('regPhone').value.trim(),
+ role=$('regRole').value,office=$('regOffice').value.trim(),
+ pin=$('regPin').value,confirmPin=$('regPinConfirm').value;
+ const error=$('registerError');error.textContent='';
+ if(NativeStore.hasPin()==='true')return error.textContent='Bu cihazda zaten kullanıcı kaydı var. PIN ile giriş yapın.',false;
+ if(first.length<2||last.length<2)return error.textContent='Ad ve soyad en az 2 karakter olmalı.',false;
+ if(!/^[^s@]+@[^s@]+.[^s@]+$/.test(email))return error.textContent='Geçerli bir e-posta adresi girin.',false;
+ if(phone&&!/^[+0-9()\s-]{7,24}$/.test(phone))return error.textContent='Telefon numarasını kontrol edin.',false;
+ if(!['accountant','business_owner','finance','employee','other'].includes(role))return error.textContent='Kullanıcı türünü seçin.',false;
+ if(pin.length<6||pin.length>32)return error.textContent='PIN 6–32 karakter olmalı.',false;
+ if(pin!==confirmPin)return error.textContent='PIN kodları eşleşmiyor.',false;
+ if(!$('regLocalConsent').checked)return error.textContent='Yerel kayıt bilgilendirmesini onaylayın.',false;
+ $('registerSubmit').disabled=true;
+ try{
+   const setResult=NativeStore.setPin(pin);
+   if(setResult!=='ok')throw new Error(setResult==='already_set'?'Bu cihazda PIN zaten oluşturulmuş.':'Güvenlik PIN’i kaydedilemedi.');
+   let raw=NativeStore.loadData();
+   if(raw==='__AUTH_REQUIRED__'||raw==='__DECRYPT_FAILED__')throw new Error('Şifreli kayıtlar açılamadı. Mevcut veriler korunuyor; destek alın.');
+   db=normalizeDB(JSON.parse(raw||'{}'));
+   db.settings.userProfile={
+     id:newRecordId(),firstName:first,lastName:last,displayName:first+' '+last,
+     email,phone,role,officeName:office,createdAt:new Date().toISOString(),
+     updatedAt:new Date().toISOString(),registrationType:'local-device'
+   };
+   if(office&&!db.settings.businessName)db.settings.businessName=office;
+   unlocked=true;readOnlyRecovery=false;
+   const saved=NativeStore.saveData(JSON.stringify(db));
+   if(saved!=='ok')throw new Error('Kullanıcı bilgileri güvenli biçimde kaydedilemedi. Veriler korunuyor.');
+   $('lock').classList.add('hidden');
+   $('pinInput').value='';$('regPin').value='';$('regPinConfirm').value='';
+   render();showView('dashboard');
+   NativeStore.showMessage('Kullanıcı kaydı oluşturuldu. Hoş geldiniz, '+first+'.');
+ }catch(e){
+   error.textContent=String(e.message||e);
+   if(NativeStore.hasPin()==='true'){$('registrationPanel').classList.add('hidden');$('pinLoginPanel').classList.remove('hidden');$('lockText').textContent='PIN oluşturulmuş. Giriş yapın.';}
+ }finally{$('registerSubmit').disabled=false;}
+ return false;
+}
+function roleLabel(role){return ({accountant:'Serbest muhasebeci mali müşavir',business_owner:'İşletme sahibi',finance:'Muhasebe / finans personeli',employee:'Personel',other:'Diğer'})[role]||'Kullanıcı';}
+function renderUserProfile(){
+ const p=db?.settings?.userProfile;if(!p)return;
+ const values={profileFirstName:p.firstName,profileLastName:p.lastName,profileEmail:p.email,profilePhone:p.phone,profileRole:p.role,profileOffice:p.officeName};
+ for(const [id,value] of Object.entries(values)){const el=$(id);if(el&&document.activeElement!==el)el.value=value||'';}
+ const status=$('profileStatus');if(status)status.textContent='Kullanıcı: '+(p.displayName||'')+' • '+roleLabel(p.role)+' • Yerel kayıt';
+}
+function saveUserProfile(){
+ if(!unlocked||readOnlyRecovery)return NativeStore.showMessage('Kullanıcı profili güncellenemiyor.');
+ const first=$('profileFirstName').value.trim(),last=$('profileLastName').value.trim(),
+ email=$('profileEmail').value.trim().toLowerCase(),phone=$('profilePhone').value.trim(),
+ role=$('profileRole').value,office=$('profileOffice').value.trim();
+ if(first.length<2||last.length<2)return NativeStore.showMessage('Ad ve soyad en az 2 karakter olmalı.');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return NativeStore.showMessage('Geçerli e-posta girin.');
+ if(phone&&!/^[+0-9()\s-]{7,24}$/.test(phone))return NativeStore.showMessage('Telefon numarasını kontrol edin.');
+ const old=db.settings.userProfile||{};
+ db.settings.userProfile={...old,firstName:first,lastName:last,displayName:first+' '+last,
+   email,phone,role,officeName:office,updatedAt:new Date().toISOString(),registrationType:'local-device'};
+ persist();NativeStore.showMessage('Kullanıcı bilgileri güncellendi.');
+}
 function submitPin(){const p=$('pinInput').value;if(p.length<6){$('pinError').textContent='PIN en az 6 karakter olmalı.';return}if(NativeStore.hasPin()!=='true'){if(NativeStore.setPin(p)!=='ok'){$('pinError').textContent='PIN kaydedilemedi.';return}}else if(NativeStore.verifyPin(p)!=='true'){$('pinError').textContent='PIN hatalı.';return}
 let raw='';try{raw=NativeStore.loadData()}catch(e){raw='__DECRYPT_FAILED__'}
 if(raw==='__DECRYPT_FAILED__'){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Şifreli kayıtlar okunamadı. Veriler silinmedi. Yedekten geri yükleyin.');return}

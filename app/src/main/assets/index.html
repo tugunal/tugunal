@@ -7,7 +7,42 @@
 <link rel="stylesheet" href="css/workspace.css">
 </head>
 <body>
-<div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
+<div id="lock" class="lock">
+ <div id="pinLoginPanel" class="lockbox">
+  <div class="register-brand">▤</div><h2>Akıllı Muhasebe</h2>
+  <p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p>
+  <div class="field"><label for="pinInput">Güvenlik PIN'i</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="PIN kodunuzu girin"></div>
+  <button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button>
+  <p id="pinError" class="dangertext muted" role="alert"></p>
+  <p class="muted" style="text-align:center;margin-top:15px">Bu cihazdaki şifreli muhasebe kayıtlarınıza güvenli erişim.</p>
+ </div>
+ <div id="registrationPanel" class="lockbox registration-card hidden">
+  <div class="register-brand">▤</div>
+  <div class="register-kicker">İLK KULLANIM • KULLANICI KAYDI</div>
+  <h2>Hesabını oluştur</h2>
+  <p class="muted">Kullanıcı bilgilerini ve bu cihaz için güvenlik PIN'ini belirle.</p>
+  <form id="registrationForm" onsubmit="return submitRegistration(event)">
+   <div class="formgrid">
+    <div class="field"><label for="regFirstName">Ad *</label><input id="regFirstName" required maxlength="60" autocomplete="given-name" placeholder="Adınız"></div>
+    <div class="field"><label for="regLastName">Soyad *</label><input id="regLastName" required maxlength="60" autocomplete="family-name" placeholder="Soyadınız"></div>
+    <div class="field"><label for="regEmail">E-posta *</label><input id="regEmail" type="email" required maxlength="120" autocomplete="email" placeholder="ornek@firma.com"></div>
+    <div class="field"><label for="regPhone">Telefon</label><input id="regPhone" type="tel" maxlength="24" autocomplete="tel" placeholder="05xx xxx xx xx"></div>
+    <div class="field"><label for="regRole">Kullanıcı türü *</label><select id="regRole" required><option value="">Seçiniz</option><option value="accountant">Serbest muhasebeci mali müşavir</option><option value="business_owner">İşletme sahibi</option><option value="finance">Muhasebe / finans personeli</option><option value="employee">Personel</option><option value="other">Diğer</option></select></div>
+    <div class="field"><label for="regOffice">İşletme / Büro adı</label><input id="regOffice" maxlength="120" autocomplete="organization" placeholder="İşletme veya büro adı"></div>
+   </div>
+   <div class="register-security">
+    <b>Bu cihazın güvenlik PIN'i</b>
+    <div class="formgrid">
+     <div class="field"><label for="regPin">PIN (6–32 karakter) *</label><input id="regPin" type="password" required minlength="6" maxlength="32" autocomplete="new-password" placeholder="Yeni PIN"></div>
+     <div class="field"><label for="regPinConfirm">PIN tekrar *</label><input id="regPinConfirm" type="password" required minlength="6" maxlength="32" autocomplete="new-password" placeholder="PIN'i tekrar yazın"></div>
+    </div>
+   </div>
+   <label class="register-consent"><input id="regLocalConsent" type="checkbox" required><span>Bilgilerimin bu cihazda şifreli olarak saklanacağını ve bu kayıt ekranının çevrimdışı kullanıcı profili oluşturduğunu anladım. Bu işlem çevrimiçi hesap veya e-posta doğrulaması oluşturmaz.</span></label>
+   <button class="btn register-submit" id="registerSubmit" type="submit">Kullanıcı kaydını oluştur</button>
+   <p id="registerError" class="dangertext muted" role="alert"></p>
+  </form>
+ </div>
+</div>
 
 <aside class="sidebar" aria-label="Muhasebe çalışma alanı">
   <div class="logo-mark"><span class="logo-symbol">▥</span><span class="logo-name">AKILLI MUHASEBE<small>1.2 • Profesyonel çalışma alanı</small></span></div>
@@ -268,7 +303,23 @@
 </section>
 
 <section id="settings" class="view"><div class="section"><h2>Ayarlar ve yedekleme</h2></div><div class="panel">
-<div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
+<div class="section"><h2>Kullanıcı Profili</h2></div>
+<div class="panel" id="userProfilePanel">
+ <p class="muted">Uygulamayı kullanan kişinin iletişim ve görev bilgileri.</p>
+ <div class="formgrid">
+  <div class="field"><label for="profileFirstName">Ad</label><input id="profileFirstName" maxlength="60"></div>
+  <div class="field"><label for="profileLastName">Soyad</label><input id="profileLastName" maxlength="60"></div>
+  <div class="field"><label for="profileEmail">E-posta</label><input id="profileEmail" type="email" maxlength="120"></div>
+  <div class="field"><label for="profilePhone">Telefon</label><input id="profilePhone" type="tel" maxlength="24"></div>
+  <div class="field"><label for="profileRole">Kullanıcı türü</label><select id="profileRole">
+   <option value="accountant">Serbest muhasebeci mali müşavir</option><option value="business_owner">İşletme sahibi</option>
+   <option value="finance">Muhasebe / finans personeli</option><option value="employee">Personel</option><option value="other">Diğer</option>
+  </select></div>
+  <div class="field"><label for="profileOffice">İşletme / Büro</label><input id="profileOffice" maxlength="120"></div>
+ </div>
+ <button class="btn" onclick="saveUserProfile()">Kullanıcı bilgilerini güncelle</button>
+ <p class="muted" id="profileStatus"></p>
+</div><div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
 <button class="btn" onclick="saveSettings()">Kaydet</button><hr>
 <div class="panel" style="margin-bottom:12px"><b>PIN güvenliği</b>
 <p class="muted">PIN kodunu değiştirmek kayıtları silmez. Mevcut PIN gereklidir.</p>

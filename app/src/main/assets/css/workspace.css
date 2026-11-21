@@ -157,3 +157,17 @@ pre{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}
   .global-company-bar select{min-width:270px}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
+
+
+/* First-run user registration */
+.register-brand{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:linear-gradient(135deg,#0d6adf,#27b9c3);color:white;font-size:25px;box-shadow:0 8px 18px #0d6adf35;margin-bottom:14px}
+.register-kicker{font-size:10px;letter-spacing:1.1px;font-weight:800;color:#1768bb;margin:3px 0 7px}
+.registration-card{max-width:540px;max-height:94vh;overflow:auto;padding:25px}
+.registration-card h2{font-size:24px;margin:0 0 6px;color:#142d4c}
+.registration-card .formgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px}
+.register-security{border:1px solid #dce8f6;background:#f5f9ff;border-radius:13px;padding:10px 13px;margin:12px 0}
+.register-security>b{font-size:13px;color:#244c77}
+.register-consent{display:flex;gap:9px;align-items:flex-start;font-size:11px;line-height:1.5;color:#5c6f86;margin:13px 0}
+.register-consent input{margin-top:3px;flex:0 0 auto;width:17px;height:17px}
+.register-submit{width:100%;min-height:48px;margin-top:4px;font-weight:750}
+@media(max-width:520px){.registration-card{padding:19px 16px}.registration-card .formgrid{grid-template-columns:1fr}.register-security .formgrid{grid-template-columns:1fr}}

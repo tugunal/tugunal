@@ -229,3 +229,12 @@ Bu yerel muhasebe uygulaması GİB veya SGK resmî gönderimi, canlı banka hesa
 API bağlantısı, yasal bordro veya e-Defter tasdik işlevi içermez. Bu
 bağlantıların tamamlanması için kullanıcı hesabı, resmî servis izinleri,
 güncel mevzuat kontrolleri ve fiziksel cihaz denemeleri gereklidir.
+
+
+## v1.2.1 — Kullanıcı kayıt ekranı
+- İlk kullanımda ad, soyad, e-posta, telefon, kullanıcı türü ve işletme/büro bilgileri alınır.
+- Kullanıcı bu cihaz için 6–32 karakterlik PIN belirler ve tekrar ederek doğrular.
+- Kullanıcı profili mevcut Android Keystore şifreli yerel veri tabanında saklanır.
+- Mevcut kullanıcıların PIN giriş akışı korunur; ilk kayıt ekranı yalnızca cihazda PIN yoksa açılır.
+- Ayarlar içinden profil görüntülenebilir ve güncellenebilir.
+- Bu ekran çevrimdışı yerel profil oluşturur; Firebase hesabı, e-posta doğrulaması veya cihazlar arası senkronizasyon sağlamaz.

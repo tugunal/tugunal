@@ -83,7 +83,7 @@ const originalRender=render;
 render=function(){
   originalRender();
   if(!unlocked)return;
-  try{renderInventory();renderActivityLog();renderWorkflow();syncWorkspace();}
+  try{renderInventory();renderActivityLog();renderWorkflow();renderUserProfile();syncWorkspace();}
   catch(error){console.error("Workspace module failed",error);}
 };
 const previousFindings=getAuditFindings;

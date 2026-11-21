@@ -99,6 +99,25 @@ assert.equal(expr("scoped('products').length"),0,"no cross-company inventory lea
 assert.equal(expr("scoped('documents').length"),0,"no cross-company document leak");
 expr("db.activeCompanyId="+activeId);
 
+assert.ok(html.includes('id="registrationPanel"'),"first-run registration panel missing");
+assert.ok(html.includes('id="regFirstName"'),"registration first name field missing");
+assert.ok(html.includes('id="regLastName"'),"registration last name field missing");
+assert.ok(html.includes('id="regEmail"'),"registration email field missing");
+assert.ok(html.includes('id="regRole"'),"registration role field missing");
+assert.ok(html.includes('id="regPinConfirm"'),"registration PIN confirmation missing");
+assert.ok(html.includes('submitRegistration(event)'),"registration submit action missing");
+assert.ok(html.includes('id="userProfilePanel"'),"user profile settings missing");
+const registrationSource=fs.readFileSync(root+"js/app_main.js","utf8");
+assert.ok(registrationSource.includes("function submitRegistration(event)"),"registration handler missing");
+assert.ok(registrationSource.includes("db.settings.userProfile"),"profile not stored in encrypted app data");
+assert.ok(registrationSource.includes("NativeStore.setPin(pin)"),"native PIN registration missing");
+assert.ok(registrationSource.includes("function saveUserProfile()"),"profile edit missing");
+assert.ok(registrationSource.includes("registrationType:'local-device'"),"registration scope not explicit");
+assert.ok(!/FirebaseAuth|createUserWithEmailAndPassword/.test(registrationSource),"must not imply cloud auth without Firebase");
+assert.ok(html.includes('çevrimdışı kullanıcı profili oluşturduğunu'),"offline/local registration disclosure missing");
+assert.ok(html.includes('Kullanıcı Profili'),"profile settings entry missing");
+assert.ok(html.includes('Kullanıcı kaydını oluştur'),"register button missing");
+assert.ok(html.includes('id="pinLoginPanel"'),"existing PIN login remains available");
 assert.ok(html.includes('id="workflow"'),"workflow view missing");
 assert.ok(html.includes('id="inventory"'),"inventory view missing");
 assert.ok(html.includes('id="globalCompanySelect"'),"global company selector missing");
