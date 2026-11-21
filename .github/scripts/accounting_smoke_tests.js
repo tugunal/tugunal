@@ -39,6 +39,7 @@ const native={
   checkForUpdate(){},saveCsvExport(){return"ok"},
 };
 const env={
+  addEventListener(){},scrollTo(){},
   window:fakeWindow,document:{getElementById:element,querySelectorAll:()=>[],createElement:()=>element("_created")},
   NativeStore:native,console,Date,Intl,Math,Number,String,Array,JSON,Set,Map,
   confirm:()=>true,prompt:()=>"",setTimeout(){},FileReader:function(){},
