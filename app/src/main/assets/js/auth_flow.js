@@ -75,8 +75,19 @@ function safeReadAccountDB(){
  const raw=NativeStore.loadData();
  if(raw==="__AUTH_REQUIRED__")throw Error("Şifre doğrulaması başarısız.");
  if(raw==="__DECRYPT_FAILED__")throw Error("Şifreli kayıt okunamadı. Mevcut veriler korunuyor. Önce yedeğinizi kontrol edin.");
- const parsed=JSON.parse(raw||"{}");
+ let parsed;
+ try{parsed=JSON.parse(raw||"{}");}
+ catch(_){throw Error("Kayıt biçimi bozuk. Mevcut kayıtlar korunuyor; şifreli yedeğinizi geri yükleyin.");}
  return normalizeDB(parsed);
+}
+function showEncryptedRecordRecovery(message){
+  db=normalizeDB({});
+  readOnlyRecovery=true;unlocked=true;
+  $("lock").classList.add("hidden");
+  $("pinInput").value="";
+  render();showView("settings");
+  $("recoveryWarning").classList.remove("hidden");
+  NativeStore.showMessage(message+" Mevcut kayıtlar silinmedi; şifreli yedeğinizi geri yükleyin.");
 }
 function finishAuthenticatedSession(data,profile){
  if(!profile)throw Error("Bu hesaba ait kullanıcı profili bulunamadı. Kayıtlar korunuyor.");
@@ -112,6 +123,7 @@ submitRegistration=function(event){
  if(!$("regLocalConsent").checked){error.textContent="Yerel kayıt bilgilendirmesini onaylayın.";return false;}
  $("registerSubmit").disabled=true;
  const alreadyPin=NativeStore.hasPin()==="true";
+ let accountRegistered=false;
  try{
    if(alreadyPin){
      const oldPin=$("regExistingPin").value;
@@ -122,6 +134,7 @@ submitRegistration=function(event){
    if(duplicateAppAccount(profiles,u,email,phone,null))throw Error("Bu kullanıcı adı, e-posta veya telefon başka bir profilde kayıtlı.");
    const registered=NativeStore.registerLocalAccount(u,email,phone,password);
    if(registered!=="ok")throw Error(authFriendlyError(registered));
+   accountRegistered=true;
    const profile={id:newRecordId(),username:u,firstName:first,lastName:last,displayName:first+" "+last,
      email,phone,role,officeName:office,createdAt:new Date().toISOString(),
      updatedAt:new Date().toISOString(),registrationType:"local-device"};
@@ -132,7 +145,11 @@ submitRegistration=function(event){
    finishAuthenticatedSession(data,profile);
    NativeStore.showMessage("Kullanıcı kaydı oluşturuldu. Hoş geldiniz, "+first+".");
  }catch(err){
-   error.textContent=String(err.message||err);
+   const rollback=accountRegistered?NativeStore.rollbackLocalRegistration(u):"not_required";
+   unlocked=false;
+   NativeStore.lockNative();
+   error.textContent=String(err.message||err)+
+     (accountRegistered&&rollback!=="ok"&&rollback!=="locked"?" Hesap kaydı geri alınamadı; mevcut verileri silmeyin.":"");
    if(NativeStore.hasPin()==="true")$("existingPinField").classList.remove("hidden");
  }finally{$("registerSubmit").disabled=false;}
  return false;
@@ -165,7 +182,13 @@ function migrateOldLocalAccount(identifier,password){
  if(registered!=="ok")throw Error(authFriendlyError(registered));
  profile.username=username;
  data.settings.userProfiles=profiles;
- finishAuthenticatedSession(data,profile);
+ try{finishAuthenticatedSession(data,profile);}
+ catch(err){
+   const rollback=NativeStore.rollbackLocalRegistration(username);
+   NativeStore.lockNative();
+   throw Error(String(err.message||err)+
+     (rollback==="ok"?" Yeni hesap kaydı geri alındı; eski PIN'iniz geçerlidir.":" Hesap geçişi doğrulanamadı; eski kayıtlarınızı silmeyin."));
+ }
  NativeStore.showMessage("Eski hesabınız güvenli girişe aktarıldı.");
 }
 function loginLegacyAccount(){
@@ -193,8 +216,13 @@ submitPin=function(){
    const profile=appAuthProfiles(data).find(p=>normalizeAuthText(p.username)===active);
    finishAuthenticatedSession(data,profile);
  }catch(e){
-   NativeStore.lockNative();
-   error.textContent=String(e.message||e);
+   const message=String(e.message||e);
+   if(message.includes("Şifreli kayıt okunamadı")||message.includes("Kayıt biçimi bozuk")){
+     showEncryptedRecordRecovery(message);
+   }else{
+     NativeStore.lockNative();
+     error.textContent=message;
+   }
  }
 };
 renderUserProfile=function(){
