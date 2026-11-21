@@ -155,7 +155,7 @@ function normalizeDB(data){
 }
 function activeCompany(){return db.companies.find(c=>Number(c.id)===Number(db.activeCompanyId))||db.companies[0]}
 function scoped(type){return (db[type]||[]).filter(x=>!x.companyId||Number(x.companyId)===Number(db.activeCompanyId))}
-function switchCompany(id){db.activeCompanyId=Number(id);persist()}
+function switchCompany(id){db.activeCompanyId=Number(id);migrateLegacyData();persist()}
 function chartAccount(code){return scoped('chartAccounts').find(x=>String(x.code)===String(code))}
 function chartOptions(){return scoped('chartAccounts').map(a=>'<option value="'+esc(a.code)+'">'+esc(a.code+' - '+a.name)+'</option>').join('')}
 function customerOptions(){return '<option value="">Cari seç (isteğe bağlı)</option>'+scoped('customers').map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')}
