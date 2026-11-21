@@ -1,14 +1,22 @@
 /* Akilli Muhasebe 1.0 — inventory and delivery-note operations.
    No tax postings are made by any of these functions. */
 "use strict";
-function stockLog(action,detail,sourceId){
+// Local operation trail only; it is NOT an immutable or legally approved audit log.
+function auditEvent(action,detail,sourceId){
+  if(!unlocked||readOnlyRecovery)return;
   if(!Array.isArray(db.activityLog))db.activityLog=[];
+  let actor="";
+  try{actor=String(NativeStore.currentLocalUser()||"");}catch(_){}
   db.activityLog.unshift({
     id:newRecordId(),companyId:db.activeCompanyId,action,
+    actor:actor.slice(0,30)||"legacy",
     detail:String(detail||"").slice(0,240),sourceId:sourceId||0,
     at:new Date().toISOString()
   });
   if(db.activityLog.length>1500)db.activityLog.length=1500;
+}
+function stockLog(action,detail,sourceId){
+  auditEvent(action,detail,sourceId);
 }
 function stockSafe(){
   if(!unlocked)return false;
@@ -141,6 +149,6 @@ function renderActivityLog(){
   const entries=scoped("activityLog").slice(0,100);
   $("activityLog").innerHTML=entries.map(x=>'<div class="row"><div><b>'+
     esc(x.action.replaceAll("_"," "))+'</b><div class="muted">'+
-    esc(x.detail)+" • "+esc((x.at||"").replace("T"," ").slice(0,16))+
+    esc(x.detail)+" • "+esc(x.actor||"Eski kayıt")+" • "+esc((x.at||"").replace("T"," ").slice(0,16))+
     '</div></div></div>').join("")||'<div class="empty">Yeni işlem geçmişi henüz boş.</div>';
 }
