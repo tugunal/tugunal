@@ -88,9 +88,9 @@ function importBankRows(){
     const id=newRecordId();db.bankRows.unshift({...row,id,companyId,status:'unmatched',matchedTxId:0,suggestedTxId:0});
     existing.add(row.key);added++;
   }
+  if(!persist())return;
   $('bankFileStatus').textContent=added+' hareket aktarıldı; '+duplicates+' aynı dosya/satır daha önce aktarılmış.';
   pendingBank=null;$('bankPreview').classList.add('hidden');$('bankMapping').classList.add('hidden');$('bankFile').value='';
-  persist();
 }
 function bankSuggestedTransaction(bankRow,used){
   const sign=r=>r.type==='income'?1:-1;
@@ -112,7 +112,7 @@ function suggestBankMatches(){
     if(match){row.status='suggested';row.suggestedTxId=match.id;alreadyUsed.add(Number(match.id));suggested++;}
     else unresolved++;
   }
-  persist();NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
+  if(persist())NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
 }
 function approveBankMatch(id){
   if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
