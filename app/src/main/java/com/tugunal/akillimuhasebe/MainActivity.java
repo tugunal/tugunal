@@ -1099,7 +1099,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String setPin(String pin) {
             try {
-                if (pin == null || pin.length() < 6 || pin.length() > 32) return "invalid";
+                if (pin == null || pin.length() < 6 || pin.length() > 64) return "invalid";
                 if (getSharedPreferences(PREFS, MODE_PRIVATE).contains("pin_hash")) return "already_set";
                 byte[] salt = new byte[16];
                 new SecureRandom().nextBytes(salt);
@@ -1158,8 +1158,9 @@ public class MainActivity extends Activity {
             try {
                 String encrypted = encryptLocalData(json == null ? "{}" : json);
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                        .putString("encrypted_db", encrypted).apply();
-                return "ok";
+                        boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                        .putString("encrypted_db", encrypted).commit();
+                return saved ? "ok" : "error";
             } catch (Exception ex) {
                 return "error";
             }
