@@ -144,7 +144,10 @@ assert.ok(nativeSource.includes('nativeUnlocked = MessageDigest.isEqual(expected
 assert.ok(nativeSource.includes('if (!nativeUnlocked) return "__AUTH_REQUIRED__"'),"native read auth missing");
 assert.ok(nativeSource.includes('if (!nativeUnlocked) return "error_locked"'),"native save auth missing");
 assert.ok(nativeSource.includes('public String changePin('),"PIN change native missing");
-assert.ok(nativeSource.includes('boolean separateInstall = getPackageName().endsWith(".kurulum")'),"update package selection missing");
+assert.ok(nativeSource.includes('CANONICAL_PACKAGE_ID = "com.tugunal.akillimuhasebe.stable"'),"canonical update ID missing");
+assert.ok(nativeSource.includes('verifyUpdateApkIdentity(target)'),"installer must verify package and signing certificate");
+assert.ok(nativeSource.includes('name.equals("AkilliMuhasebe-v" + latestVersion + ".apk")'),"only one stable release APK should be installable");
+assert.ok(!nativeSource.includes('boolean separateInstall'),"legacy alternate package installation must remain disabled");
 const xmlSource=fs.readFileSync(root+'ubl_parser.js','utf8');
 assert.ok(xmlSource.includes('UBL-TR') && xmlSource.includes('DOMParser'),"UBL reader not loaded");
 assert.ok(!/fetch\s*\(|XMLHttpRequest/.test(xmlSource),"UBL parsing must be offline");
