@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+# Prevent obsolete pushes from producing overlapping, potentially stale APK artifacts.
+concurrency:
+  group: akilli-muhasebe-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
