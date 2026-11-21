@@ -8,15 +8,24 @@
 </head>
 <body>
 <div id="lock" class="lock">
- <div id="pinLoginPanel" class="lockbox">
+ <div id="welcomePanel" class="lockbox">
+  <div class="register-brand">▤</div><div class="register-kicker">AKILLI MUHASEBE PRO</div>
+  <h2>Hoş geldiniz</h2><p class="muted">Devam etmek için bir seçenek belirleyin.</p>
+  <button class="btn" style="width:100%;margin:8px 0" onclick="showAuthChoice('login')">Kullanıcı Girişi Yap</button>
+  <button class="btn secondary" style="width:100%;margin:8px 0" onclick="showAuthChoice('register')">Yeni Kayıt Oluştur</button>
+  <p class="muted" style="text-align:center;margin-top:15px">Güvenli ve şifreli yerel muhasebe çalışma alanı.</p>
+ </div>
+ <div id="pinLoginPanel" class="lockbox hidden">
   <div class="register-brand">▤</div><h2>Akıllı Muhasebe</h2>
-  <p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p>
+  <p class="muted" id="lockText">Devam etmek için PIN kodunuzu girin.</p>
+  <button class="tag" type="button" onclick="showAuthChoice('welcome')">← Geri</button>
   <div class="field"><label for="pinInput">Giriş parolası / PIN</label><input id="pinInput" type="password" inputmode="text" autocapitalize="none" spellcheck="false" autocomplete="current-password" maxlength="32" placeholder="Harf ve rakam içeren parolanızı girin"></div>
   <button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button>
   <p id="pinError" class="dangertext muted" role="alert"></p>
   <p class="muted" style="text-align:center;margin-top:15px">Bu cihazdaki şifreli muhasebe kayıtlarınıza güvenli erişim.</p>
  </div>
  <div id="registrationPanel" class="lockbox registration-card hidden">
+  <button class="tag" type="button" onclick="showAuthChoice('welcome')">← Geri</button>
   <div class="register-brand">▤</div>
   <div class="register-kicker">İLK KULLANIM • KULLANICI KAYDI</div>
   <h2>Hesabını oluştur</h2>

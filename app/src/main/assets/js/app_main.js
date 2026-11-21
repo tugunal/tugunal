@@ -1,11 +1,30 @@
 /* Akilli Muhasebe 1.0 — app_main.js */
 function bootstrap(){
  $('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+ $('welcomePanel').classList.remove('hidden');
+ $('pinLoginPanel').classList.add('hidden');
+ $('registrationPanel').classList.add('hidden');
+ $('pinError').textContent='';$('registerError').textContent='';
+}
+function showAuthChoice(choice){
+ $('welcomePanel').classList.toggle('hidden',choice!=='welcome');
+ $('pinLoginPanel').classList.toggle('hidden',choice!=='login');
+ $('registrationPanel').classList.toggle('hidden',choice!=='register');
+ $('pinError').textContent='';$('registerError').textContent='';
  const has=NativeStore.hasPin()==='true';
- $('pinLoginPanel').classList.toggle('hidden',!has);
- $('registrationPanel').classList.toggle('hidden',has);
- $('lockText').textContent='Devam etmek için PIN kodunuzu girin.';
- $('pinButton').textContent='Giriş yap';
+ if(choice==='login'){
+  $('lockText').textContent=has?'Devam etmek için PIN kodunuzu girin.':'Bu cihazda henüz kullanıcı kaydı yok. Önce yeni kayıt oluşturun.';
+  $('pinButton').disabled=!has;$('pinButton').textContent='Giriş yap';
+  if(has)setTimeout(()=>$('pinInput').focus(),120);
+ }
+ if(choice==='register'){
+  const label=document.querySelector('label[for="regPin"]');
+  if(label)label.textContent=has?'Cihaz güvenlik PIN’i *':'Yeni PIN (6–32 karakter) *';
+  $('regPin').placeholder=has?'Mevcut cihaz PIN’i':'Yeni PIN';
+  $('regPinConfirm').placeholder=has?'Cihaz PIN’ini tekrar yazın':'PIN’i tekrar yazın';
+  $('regPin').autocomplete=has?'current-password':'new-password';
+  $('regPinConfirm').autocomplete=has?'current-password':'new-password';
+ }
 }
 function submitRegistration(event){
  if(event)event.preventDefault();
@@ -14,7 +33,7 @@ function submitRegistration(event){
  role=$('regRole').value,office=$('regOffice').value.trim(),
  pin=$('regPin').value,confirmPin=$('regPinConfirm').value;
  const error=$('registerError');error.textContent='';
- if(NativeStore.hasPin()==='true')return error.textContent='Bu cihazda zaten kullanıcı kaydı var. PIN ile giriş yapın.',false;
+ const hasPin=NativeStore.hasPin()==='true';
  if(first.length<2||last.length<2)return error.textContent='Ad ve soyad en az 2 karakter olmalı.',false;
  if(!/^[^s@]+@[^s@]+.[^s@]+$/.test(email))return error.textContent='Geçerli bir e-posta adresi girin.',false;
  if(phone&&!/^[+0-9()\s-]{7,24}$/.test(phone))return error.textContent='Telefon numarasını kontrol edin.',false;
@@ -24,16 +43,20 @@ function submitRegistration(event){
  if(!$('regLocalConsent').checked)return error.textContent='Yerel kayıt bilgilendirmesini onaylayın.',false;
  $('registerSubmit').disabled=true;
  try{
-   const setResult=NativeStore.setPin(pin);
-   if(setResult!=='ok')throw new Error(setResult==='already_set'?'Bu cihazda PIN zaten oluşturulmuş.':'Güvenlik PIN’i kaydedilemedi.');
+   if(hasPin){
+    if(NativeStore.verifyPin(pin)!=='true')throw new Error('Cihaz güvenlik PIN’i yanlış.');
+   }else{
+    const setResult=NativeStore.setPin(pin);
+    if(setResult!=='ok')throw new Error('Güvenlik PIN’i kaydedilemedi.');
+   }
    let raw=NativeStore.loadData();
    if(raw==='__AUTH_REQUIRED__'||raw==='__DECRYPT_FAILED__')throw new Error('Şifreli kayıtlar açılamadı. Mevcut veriler korunuyor; destek alın.');
    db=normalizeDB(JSON.parse(raw||'{}'));
-   db.settings.userProfile={
-     id:newRecordId(),firstName:first,lastName:last,displayName:first+' '+last,
+   const profile={id:newRecordId(),firstName:first,lastName:last,displayName:first+' '+last,
      email,phone,role,officeName:office,createdAt:new Date().toISOString(),
-     updatedAt:new Date().toISOString(),registrationType:'local-device'
-   };
+     updatedAt:new Date().toISOString(),registrationType:'local-device'};
+   if(!Array.isArray(db.settings.userProfiles))db.settings.userProfiles=[];
+   db.settings.userProfiles.push(profile);db.settings.userProfile=profile;
    if(office&&!db.settings.businessName)db.settings.businessName=office;
    unlocked=true;readOnlyRecovery=false;
    const saved=NativeStore.saveData(JSON.stringify(db));
@@ -44,7 +67,7 @@ function submitRegistration(event){
    NativeStore.showMessage('Kullanıcı kaydı oluşturuldu. Hoş geldiniz, '+first+'.');
  }catch(e){
    error.textContent=String(e.message||e);
-   if(NativeStore.hasPin()==='true'){$('registrationPanel').classList.add('hidden');$('pinLoginPanel').classList.remove('hidden');$('lockText').textContent='PIN oluşturulmuş. Giriş yapın.';}
+   if(NativeStore.hasPin()==='true')showAuthChoice('register');
  }finally{$('registerSubmit').disabled=false;}
  return false;
 }
