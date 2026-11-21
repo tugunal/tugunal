@@ -46,3 +46,24 @@ Bordro neti, girilen brut + ek odeme - kullanicinin girdigi kesintiler olarak he
 ## Veri guvenligi
 
 Kayitlar aktif firma bazinda ayrilir ve cihazda Android Keystore tabanli AES-GCM ile sifrelenir. Yedek dosyalari kullanicinin belirledigi parola ile PBKDF2-HMAC-SHA256 ve AES-GCM kullanilarak sifrelenir. Yedek parolasi unutulursa yedek acilamaz. Uygulama otomatik bulut senkronizasyonu yapmaz.
+
+
+## Surum 0.6.0 - uygulama ici guncelleme
+
+- Uygulama acildiginda GitHub Releases uzerinden guncelleme kontrolu
+- Ana ekranda ve ayarlarda "Guncellemeleri kontrol et" / "Guncelle" butonlari
+- APK indirme, SHA-256 dogrulamasi ve Android paket kurucusunu acma
+- GitHub Releases alanina surumlu APK yayinlama
+- Release APK'lari sabit Android imza anahtariyla imzalanir
+
+### GitHub Actions imzalama sirri
+
+Repo Settings > Secrets and variables > Actions altinda su repository secrets degerlerini tanimla:
+- ANDROID_KEYSTORE_BASE64
+- ANDROID_KEYSTORE_PASSWORD
+- ANDROID_KEY_ALIAS
+- ANDROID_KEY_PASSWORD
+
+Bunlar olmadan workflow yalnizca debug APK uretir ve GitHub Release yayinlamaz. Ilk imzali surumden sonraki APK guncellemeleri ayni anahtarla imzalanmalidir. Imza anahtarini kaybetme veya degistirme.
+
+Eski 0.5.x debug APK'lari farkli gecici debug sertifikalariyla derlenmistir; Android bu uygulamayi yeni kalici imzali anahtarla dogrudan uzerine kurmaya izin vermez. Ilk geciste uygulama icinden sifreli yedek al, eski APK'yi kaldir, ilk imzali APK'yi kur ve yedegi geri yukle. Sonraki surumlerde uygulama ici guncelleme calisir.

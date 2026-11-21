@@ -35,7 +35,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 </head>
 <body>
 <div id="lock" class="lock"><div class="lockbox"><div style="font-size:28px">▤</div><h2>Akıllı Muhasebe</h2><p class="muted" id="lockText">Güvenli kullanım için PIN belirleyin.</p><div class="field"><label>PIN (en az 6 karakter)</label><input id="pinInput" type="password" inputmode="numeric" autocomplete="off"></div><button class="btn" style="width:100%" id="pinButton" onclick="submitPin()">Devam et</button><p id="pinError" class="dangertext muted"></p></div></div>
-<header><div class="toprow"><small>AKILLI MUHASEBE • v0.5.1</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
+<header><div class="toprow"><small>AKILLI MUHASEBE • v0.6.0</small><span class="pill">● Cihazda kayıt</span></div><h1 id="companyTitle">Mali Durum Özeti</h1><small id="today"></small></header>
 <main class="container">
 <section id="dashboard" class="view active">
 <div class="cards">
@@ -43,6 +43,14 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="card metric"><small>Toplam gider</small><strong id="totalExpense">₺0,00</strong><em>Kaydedilen hareketler</em></div>
 <div class="card metric"><small>Net fark</small><strong id="netBalance">₺0,00</strong><em>Gelir - gider</em></div>
 <div class="card metric"><small>Cari kayıt</small><strong id="customerCount">0</strong><em>Müşteri ve tedarikçi</em></div>
+</div>
+<div class="panel update-card" style="margin-top:12px">
+  <div class="toprow"><b>Uygulama güncellemesi</b><span class="badge" id="updateVersionBadge">v0.6.0</span></div>
+  <p class="muted" id="updateStatus">Yeni sürüm kontrolü yapılmadı.</p>
+  <div class="toolbar">
+    <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
+    <button class="btn hidden" id="installUpdateButton" onclick="installAvailableUpdate()">Güncelle</button>
+  </div>
 </div>
 <div class="section"><h2>Aktif mükellef / firma</h2><button onclick="showView('companies')">Firma yönetimi</button></div><div class="panel"><div class="field"><label>Çalışılan firma</label><select id="activeCompanySelect" onchange="switchCompany(this.value)"></select></div><div class="muted" id="activeCompanyInfo"></div></div>
 <div class="section"><h2>Hızlı işlemler</h2></div>
@@ -113,10 +121,19 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
 <button class="btn" onclick="saveSettings()">Kaydet</button><hr>
 <div class="notice">Yedek dosyası parola ile şifrelenir. Yedekleme parolasını unutmayın; parola olmadan yedek açılamaz.</div>
+<div class="section"><h2>Uygulama güncellemesi</h2></div>
+<div class="panel">
+  <p class="muted" id="settingsUpdateStatus">Yüklü sürüm kontrol ediliyor.</p>
+  <div class="toolbar">
+    <button class="btn secondary" onclick="checkForUpdates(true)">Güncellemeleri kontrol et</button>
+    <button class="btn hidden" id="settingsInstallUpdateButton" onclick="installAvailableUpdate()">Güncelle</button>
+  </div>
+  <p class="muted">Yeni sürüm bulunduğunda APK indirilir ve Android kurulum ekranı açılır. Kurulum için Android'in izin istemesi normaldir.</p>
+</div>
 <div class="toolbar" style="margin-top:12px"><button class="btn secondary" onclick="backup()">Şifreli yedek oluştur</button><button class="btn secondary" onclick="document.getElementById('restoreFile').click()">Yedekten geri yükle</button><input id="restoreFile" type="file" accept=".json,application/json" class="hidden" onchange="restoreBackup(event)"></div>
 <hr><p class="muted">Kayıtlar bu cihazda Android Keystore tabanlı şifreleme ile saklanır. Otomatik bulut senkronizasyonu bu sürümde yoktur.</p>
 <button class="btn secondary" onclick="lockApp()">Ekranı kilitle</button>
-<p class="muted">Sürüm 0.2.0 • Çevrimdışı öncelikli</p>
+<p class="muted">Sürüm <span id="appVersionText">0.6.0</span> • Güncellenebilir sürüm</p>
 </div></section>
 </main>
 
@@ -199,8 +216,16 @@ function renderInstruments(){const items=scoped('instruments').slice().sort((a,b
 function renderOverdue(){const items=overdueInvoices();$('overdueList').innerHTML=items.map(i=>'<div class="row"><div style="min-width:0;flex:1"><b>'+esc(i.party||'')+'</b><div class="muted">Fatura: '+esc(i.number||'')+' • Vade: '+esc(i.dueDate||'')+'</div></div><div style="text-align:right"><b class="negative">'+money(invoiceRemaining(i))+'</b><div><span class="badge dangertext">Vadesi geçti</span></div></div></div>').join('')||'<div class="empty">Vadesi geçmiş açık fatura yok.</div>'}
 function openSettlement(customerId){openForm('settlement');const sel=$('formBody').querySelector('[name="customerId"]');if(sel)sel.value=String(customerId);const c=scoped('customers').find(x=>Number(x.id)===Number(customerId));const party=$('formBody').querySelector('[name="party"]');if(party&&c)party.value=c.name}
 function bootstrap(){$('today').textContent=new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const has=NativeStore.hasPin()==='true';$('lockText').textContent=has?'Devam etmek için PIN kodunuzu girin.':'Güvenli kullanım için en az 6 karakterli PIN belirleyin.';$('pinButton').textContent=has?'Giriş yap':'PIN oluştur'}
-function submitPin(){const p=$('pinInput').value;if(p.length<6){$('pinError').textContent='PIN en az 6 karakter olmalı.';return}if(NativeStore.hasPin()!=='true'){if(NativeStore.setPin(p)!=='ok'){$('pinError').textContent='PIN kaydedilemedi.';return}}else if(NativeStore.verifyPin(p)!=='true'){$('pinError').textContent='PIN hatalı.';return}try{db=normalizeDB(JSON.parse(NativeStore.loadData()||'{}'))}catch(e){db=normalizeDB({})}unlocked=true;migrateLegacyData();$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';persist()}
+function submitPin(){const p=$('pinInput').value;if(p.length<6){$('pinError').textContent='PIN en az 6 karakter olmalı.';return}if(NativeStore.hasPin()!=='true'){if(NativeStore.setPin(p)!=='ok'){$('pinError').textContent='PIN kaydedilemedi.';return}}else if(NativeStore.verifyPin(p)!=='true'){$('pinError').textContent='PIN hatalı.';return}try{db=normalizeDB(JSON.parse(NativeStore.loadData()||'{}'))}catch(e){db=normalizeDB({})}unlocked=true;migrateLegacyData();$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';persist();$('appVersionText').textContent=NativeStore.getAppVersion();setTimeout(()=>checkForUpdates(false),900)}
 function persist(){if(unlocked){if(NativeStore.saveData(JSON.stringify(db))!=='ok')NativeStore.showMessage('Kayıt sırasında hata oluştu. Lütfen yedek alın.')}render()}
+let availableUpdate=null,updateCheckBusy=false;
+function setUpdateStatus(message){if($('updateStatus'))$('updateStatus').textContent=message;if($('settingsUpdateStatus'))$('settingsUpdateStatus').textContent=message;}
+function setUpdateButtons(visible){$('installUpdateButton')?.classList.toggle('hidden',!visible);$('settingsInstallUpdateButton')?.classList.toggle('hidden',!visible);}
+function checkForUpdates(manual){if(updateCheckBusy)return;updateCheckBusy=true;availableUpdate=null;setUpdateButtons(false);setUpdateStatus('Güncellemeler kontrol ediliyor...');try{NativeStore.checkForUpdate(NativeStore.getAppVersion());}catch(e){updateCheckBusy=false;setUpdateStatus('Güncelleme kontrolü başlatılamadı.');if(manual)NativeStore.showMessage('Güncelleme kontrolü başlatılamadı.');}}
+window.onUpdateCheckResult=function(result){updateCheckBusy=false;if(!result||!result.success){setUpdateStatus((result&&result.error)||'Güncelleme sunucusuna ulaşılamadı. İnternet bağlantısını kontrol edin.');return;}const current=String(result.currentVersion||NativeStore.getAppVersion()),latest=String(result.latestVersion||'');const parts=v=>v.replace(/^v/i,'').split(/[.-]/).map(x=>parseInt(x,10)||0);const a=parts(latest),b=parts(current);let newer=false;for(let i=0;i<Math.max(a.length,b.length);i++){if((a[i]||0)>(b[i]||0)){newer=true;break;}if((a[i]||0)<(b[i]||0))break;}if(newer&&result.downloadUrl){availableUpdate=result;setUpdateStatus('Yeni sürüm bulundu: v'+latest+'. İndirmek için Güncelle butonuna bas.');if($('updateVersionBadge'))$('updateVersionBadge').textContent='Yeni v'+latest;setUpdateButtons(true);}else{availableUpdate=null;setUpdateStatus('Uygulaman güncel. Yüklü sürüm: v'+current);if($('updateVersionBadge'))$('updateVersionBadge').textContent='Güncel';setUpdateButtons(false);}};
+function installAvailableUpdate(){if(!availableUpdate||!availableUpdate.downloadUrl){NativeStore.showMessage('Önce güncelleme kontrolü yapın.');return;}if(!confirm('Akıllı Muhasebe v'+availableUpdate.latestVersion+' indirilsin mi? İndirme tamamlanınca Android kurulum ekranı açılacak.'))return;setUpdateButtons(false);setUpdateStatus('Yeni APK indiriliyor...');NativeStore.downloadAndInstallUpdate(availableUpdate.downloadUrl,availableUpdate.digest||'');}
+window.onUpdateDownloadProgress=function(p){if(!p)return;const pct=Number(p.percent)||0;setUpdateStatus('APK indiriliyor: %'+pct);};
+window.onUpdateDownloadResult=function(result){if(!result||!result.success){setUpdateStatus((result&&result.message)||'APK indirilemedi.');setUpdateButtons(!!availableUpdate);return;}setUpdateStatus(result.message||'APK indirildi. Android kurulum ekranı açılıyor.');};
 function lockApp(){unlocked=false;$('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent=''}
 function showView(id){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===id));render()}
 function handleBack(){if(!$('modal').classList.contains('hidden'))closeForm();else if(!$('lock').classList.contains('hidden')){}else showView('dashboard')}

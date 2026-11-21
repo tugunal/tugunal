@@ -10,8 +10,24 @@ android {
         applicationId "com.tugunal.akillimuhasebe"
         minSdk 26
         targetSdk 35
-        versionCode 6
-        versionName "0.5.1"
+        versionCode 7
+        versionName "0.6.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "missing-release-key.jks")
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: ""
+            keyAlias System.getenv("ANDROID_KEY_ALIAS") ?: "akilli-muhasebe-release"
+            keyPassword System.getenv("ANDROID_KEY_PASSWORD") ?: ""
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
     }
 
     compileOptions {

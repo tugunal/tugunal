@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -86,18 +86,76 @@ jobs:
               "app/src/main/res/values/strings.xml",
               "app/src/main/res/values/styles.xml",
               "app/src/main/res/drawable/ic_launcher.xml",
+              "app/src/main/res/xml/file_paths.xml",
           ]:
               ET.parse(path)
               print("OK:", path)
           PY
 
-      - name: APK derle
-        run: gradle --no-daemon clean assembleDebug
+      - name: Surum numarasini oku
+        id: version
+        run: |
+          VERSION="$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle | head -n 1)"
+          if [ -z "$VERSION" ]; then echo "versionName bulunamadi"; exit 1; fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: APK dosyasini yukle
+      - name: Imzalama anahtarini kontrol et
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets are not configured; only a debug APK will be built."
+          else
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/akilli-muhasebe-release.jks"
+            test -s "$RUNNER_TEMP/akilli-muhasebe-release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/akilli-muhasebe-release.jks" >> "$GITHUB_ENV"
+            echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Imzali APK derle
+        if: steps.signing.outputs.available == 'true'
+        run: |
+          gradle --no-daemon clean assembleRelease
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}.apk"
+
+      - name: Imza anahtari henuz ayarlanmadiysa test APK derle
+        if: steps.signing.outputs.available != 'true'
+        run: |
+          gradle --no-daemon clean assembleDebug
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/AkilliMuhasebe-v${APP_VERSION}-DEBUG.apk"
+
+      - name: APK dosyasini artifact olarak yukle
         uses: actions/upload-artifact@v4
         with:
-          name: akilli-muhasebe-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-apk
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Kararli surumu GitHub Releases alanina yayinla
+        if: steps.signing.outputs.available == 'true' && (github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'Release:'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Akilli Muhasebe v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.sha }}
+          files: dist/AkilliMuhasebe-v${{ steps.version.outputs.value }}.apk
+          make_latest: true
+          draft: false
+          prerelease: false
+          body: |
+            Akilli Muhasebe v${{ steps.version.outputs.value }}.
+            Android uygulama ici guncelleme denetimi ve APK kurulum akisi eklendi.
+            Ilk kez bu imzali surume geciyorsan eski surumde yedek al; onceki test APK imzasi farkli oldugu icin ilk geciste kaldirip yeniden kurman gerekebilir.

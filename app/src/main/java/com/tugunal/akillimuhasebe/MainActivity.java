@@ -14,6 +14,8 @@ import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.view.Window;
+import android.provider.Settings;
+import androidx.core.content.FileProvider;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
@@ -34,6 +36,11 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.io.BufferedInputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Locale;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -62,6 +69,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private long pausedAt = 0L;
+    private File pendingInstallFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -197,6 +205,12 @@ public class MainActivity extends Activity {
                     webView.evaluateJavascript("if(window.lockApp){window.lockApp();}", null), 250);
         }
         pausedAt = 0L;
+        if (pendingInstallFile != null && Build.VERSION.SDK_INT >= 26
+                && getPackageManager().canRequestPackageInstalls()) {
+            File file = pendingInstallFile;
+            pendingInstallFile = null;
+            webView.postDelayed(() -> openApkInstaller(file), 350);
+        }
     }
 
     @Override
@@ -370,7 +384,7 @@ public class MainActivity extends Activity {
             payload.put("success", success);
             payload.put("text", text == null ? "" : text);
             payload.put("error", error == null ? "" : error);
-            String argument = JSONObject.quote(payload.toString());
+            String argument = payload.toString();
             runOnUiThread(() -> {
                 if (webView != null) {
                     webView.evaluateJavascript(
@@ -395,6 +409,214 @@ public class MainActivity extends Activity {
         options.inSampleSize = sample;
         options.inPreferredConfig = Bitmap.Config.ARGB_8888;
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
+    }
+
+    private void sendUpdateCallback(String callback, JSONObject payload) {
+        String argument = payload.toString();
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript("window." + callback + " && window." + callback
+                        + "(" + argument + ");", null);
+            }
+        });
+    }
+
+    private int compareVersions(String left, String right) {
+        String[] a = left.replaceFirst("^[vV]", "").split("[.-]");
+        String[] b = right.replaceFirst("^[vV]", "").split("[.-]");
+        int length = Math.max(a.length, b.length);
+        for (int i = 0; i < length; i++) {
+            int av = i < a.length ? parseVersionPart(a[i]) : 0;
+            int bv = i < b.length ? parseVersionPart(b[i]) : 0;
+            if (av != bv) return Integer.compare(av, bv);
+        }
+        return 0;
+    }
+
+    private int parseVersionPart(String value) {
+        try { return Integer.parseInt(value.replaceAll("[^0-9].*$", "")); }
+        catch (Exception ex) { return 0; }
+    }
+
+    private void checkForLatestRelease(String currentVersion) {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL("https://api.github.com/repos/tugunal/tugunal/releases/latest");
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(15000);
+            connection.setRequestProperty("Accept", "application/vnd.github+json");
+            connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28");
+            connection.setRequestProperty("User-Agent", "AkilliMuhasebe-Android");
+            int code = connection.getResponseCode();
+            if (code != 200) throw new IllegalStateException(
+                    code == 404 ? "Henüz yayınlanmış bir güncelleme bulunmuyor." :
+                            "Güncelleme sunucusu HTTP " + code + " yanıtı verdi.");
+            StringBuilder body = new StringBuilder();
+            try (InputStream input = new BufferedInputStream(connection.getInputStream())) {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    body.append(new String(buffer, 0, count, StandardCharsets.UTF_8));
+                    if (body.length() > 2_000_000) throw new IllegalStateException("Güncelleme bilgisi çok büyük.");
+                }
+            }
+            JSONObject release = new JSONObject(body.toString());
+            String tag = release.optString("tag_name", "").trim();
+            String latestVersion = tag.replaceFirst("^[vV]", "");
+            if (latestVersion.isEmpty()) throw new IllegalStateException("Sürüm numarası bulunamadı.");
+            if (release.optBoolean("draft", false) || release.optBoolean("prerelease", false)) {
+                throw new IllegalStateException("Yayınlanan kararlı sürüm bulunamadı.");
+            }
+            org.json.JSONArray assets = release.optJSONArray("assets");
+            String downloadUrl = "";
+            String digest = "";
+            if (assets != null) {
+                for (int i = 0; i < assets.length(); i++) {
+                    JSONObject asset = assets.optJSONObject(i);
+                    if (asset == null) continue;
+                    String name = asset.optString("name", "");
+                    if (name.toLowerCase(Locale.ROOT).endsWith(".apk")
+                            && name.startsWith("AkilliMuhasebe-")) {
+                        downloadUrl = asset.optString("browser_download_url", "");
+                        digest = asset.optString("digest", "");
+                        break;
+                    }
+                }
+            }
+            if (downloadUrl.isEmpty()) throw new IllegalStateException("Yayın içinde APK dosyası bulunamadı.");
+            JSONObject result = new JSONObject();
+            result.put("success", true);
+            result.put("currentVersion", currentVersion == null ? "" : currentVersion);
+            result.put("latestVersion", latestVersion);
+            result.put("downloadUrl", downloadUrl);
+            result.put("digest", digest);
+            result.put("releaseNotes", release.optString("body", ""));
+            sendUpdateCallback("onUpdateCheckResult", result);
+        } catch (Exception ex) {
+            JSONObject result = new JSONObject();
+            try {
+                result.put("success", false);
+                result.put("error", ex.getMessage() == null ? "Güncelleme kontrolü başarısız." : ex.getMessage());
+                result.put("currentVersion", currentVersion == null ? "" : currentVersion);
+            } catch (Exception ignored) { }
+            sendUpdateCallback("onUpdateCheckResult", result);
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    private void sendUpdateProgress(int percent, long received, long total) {
+        JSONObject result = new JSONObject();
+        try {
+            result.put("percent", percent);
+            result.put("received", received);
+            result.put("total", total);
+        } catch (Exception ignored) { }
+        sendUpdateCallback("onUpdateDownloadProgress", result);
+    }
+
+    private void sendUpdateDownloadResult(boolean success, String message) {
+        JSONObject result = new JSONObject();
+        try {
+            result.put("success", success);
+            result.put("message", message == null ? "" : message);
+        } catch (Exception ignored) { }
+        sendUpdateCallback("onUpdateDownloadResult", result);
+    }
+
+    private void downloadUpdateApk(String downloadUrl, String expectedDigest) {
+        HttpURLConnection connection = null;
+        File target = null;
+        try {
+            URL url = new URL(downloadUrl);
+            if (!"https".equalsIgnoreCase(url.getProtocol())
+                    || !"github.com".equalsIgnoreCase(url.getHost())
+                    || !url.getPath().startsWith("/tugunal/tugunal/releases/download/")) {
+                throw new IllegalArgumentException("Güvenilmeyen güncelleme adresi.");
+            }
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setConnectTimeout(20000);
+            connection.setReadTimeout(30000);
+            connection.setRequestProperty("User-Agent", "AkilliMuhasebe-Android");
+            int response = connection.getResponseCode();
+            if (response != 200) throw new IllegalStateException("APK indirme sunucusu HTTP " + response + " yanıtı verdi.");
+            long total = connection.getContentLengthLong();
+            File folder = new File(getCacheDir(), "updates");
+            if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException("Güncelleme klasörü oluşturulamadı.");
+            target = new File(folder, "AkilliMuhasebe-update.apk");
+            if (target.exists() && !target.delete()) throw new IllegalStateException("Eski indirme dosyası temizlenemedi.");
+            MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            long received = 0;
+            try (InputStream input = new BufferedInputStream(connection.getInputStream());
+                 FileOutputStream output = new FileOutputStream(target)) {
+                byte[] buffer = new byte[65536];
+                int count;
+                int lastPercent = -1;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                    sha.update(buffer, 0, count);
+                    received += count;
+                    int percent = total > 0 ? (int) Math.min(100, (received * 100L) / total) : 0;
+                    if (percent != lastPercent && (percent == 100 || percent % 5 == 0)) {
+                        sendUpdateProgress(percent, received, total);
+                        lastPercent = percent;
+                    }
+                }
+                output.flush();
+            }
+            if (received < 1_000_000L) throw new IllegalStateException("İndirilen APK dosyası beklenenden küçük.");
+            String actualDigest = toHex(sha.digest());
+            if (expectedDigest != null && expectedDigest.startsWith("sha256:")
+                    && !actualDigest.equalsIgnoreCase(expectedDigest.substring(7))) {
+                target.delete();
+                throw new SecurityException("APK doğrulaması başarısız. Dosya güvenlik kontrolünden geçmedi.");
+            }
+            File ready = target;
+            runOnUiThread(() -> {
+                sendUpdateDownloadResult(true, "APK indirildi. Android kurulum ekranı açılıyor.");
+                requestApkInstall(ready);
+            });
+        } catch (Exception ex) {
+            if (target != null && target.exists()) target.delete();
+            sendUpdateDownloadResult(false, ex.getMessage() == null ? "APK indirilemedi." : ex.getMessage());
+        } finally {
+            if (connection != null) connection.disconnect();
+        }
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder value = new StringBuilder();
+        for (byte b : bytes) value.append(String.format(Locale.ROOT, "%02x", b & 0xff));
+        return value.toString();
+    }
+
+    private void requestApkInstall(File apk) {
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            pendingInstallFile = apk;
+            Toast.makeText(this, "APK kurulumu için bu uygulamaya izin verin.", Toast.LENGTH_LONG).show();
+            Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(settings);
+            return;
+        }
+        openApkInstaller(apk);
+    }
+
+    private void openApkInstaller(File apk) {
+        try {
+            Uri contentUri = FileProvider.getUriForFile(this,
+                    getPackageName() + ".fileprovider", apk);
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(contentUri, "application/vnd.android.package-archive");
+            install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(install);
+        } catch (Exception ex) {
+            Toast.makeText(this, "Android kurulum ekranı açılamadı: " + ex.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     public class SecureBridge {
@@ -518,11 +740,21 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void checkForUpdate(String currentVersion) {
+            new Thread(() -> checkForLatestRelease(currentVersion)).start();
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallUpdate(String downloadUrl, String expectedDigest) {
+            new Thread(() -> downloadUpdateApk(downloadUrl, expectedDigest)).start();
+        }
+
+        @JavascriptInterface
         public String getAppVersion() {
             try {
                 return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             } catch (Exception ex) {
-                return "0.5.0";
+                return "0.6.0";
             }
         }
 
