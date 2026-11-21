@@ -50,6 +50,21 @@ for(const path of sources.filter(x=>x!=="js/app_init.js")){
   vm.runInContext(fs.readFileSync(root+path,"utf8"),ctx,{filename:path,timeout:20000});
 }
 const expr=code=>vm.runInContext(code,ctx,{timeout:20000});
+// Every HTML inline action must refer to an actually loaded JavaScript handler.
+// This catches silent broken buttons before an APK is handed to a customer.
+const builtInActions=new Set(["confirm","prompt","alert","parseInt","parseFloat",
+  "Number","String","Boolean","Date","Math","setTimeout","clearTimeout","isNaN"]);
+const unknownActions=new Set();
+const inlineActions=[...html.matchAll(/\\b(?:onclick|onsubmit|onchange|oninput)\\s*=\\s*"([^"]+)"/g)];
+for(const attr of inlineActions){
+  const handler=attr[1];
+  for(const hit of handler.matchAll(/(?:^|[^\\w.$])([A-Za-z_$][\\w$]*)\\s*\\(/g)){
+    const name=hit[1];
+    if(builtInActions.has(name))continue;
+    if(expr("typeof "+name)!=="function")unknownActions.add(name+" in "+handler);
+  }
+}
+assert.deepEqual([...unknownActions],[],"HTML buttons reference missing JavaScript handlers");
 expr("db=normalizeDB({});unlocked=true;render=function(){}");
 assert.equal(expr("persist()"),true,"First accounting snapshot must be committed");
 const committedTxCount=expr("db.transactions.length");
