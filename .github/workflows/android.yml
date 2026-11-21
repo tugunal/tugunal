@@ -144,6 +144,25 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/debug/app-debug.apk "dist/AkilliMuhasebe-v${APP_VERSION}-DEBUG.apk"
 
+      - name: Yeni paket icin imzasiz Android release ve guvenilir imzalama araclarini hazirla
+        if: steps.signing.outputs.available != 'true'
+        run: |
+          gradle --no-daemon assembleRelease
+          mkdir -p signing-input
+          cp app/build/outputs/apk/release/app-release-unsigned.apk signing-input/AkilliMuhasebe-v${APP_VERSION}-STABLE-UNSIGNED.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" signing-input/apksigner.jar
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" signing-input/zipalign
+          chmod 755 signing-input/zipalign
+
+      - name: Harici imzalama girdilerini indirilebilir yap
+        if: steps.signing.outputs.available != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: akilli-muhasebe-v${{ steps.version.outputs.value }}-signing-input
+          path: signing-input/*
+          if-no-files-found: error
+          retention-days: 7
+
       - name: APK dosyasini artifact olarak yukle
         uses: actions/upload-artifact@v4
         with:

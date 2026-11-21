@@ -131,3 +131,15 @@ Not: v0.8.0 geçici fotoğraf dosyalarını arşive kaydetmez, yalnızca OCR tas
 
 Sinirlar:
 OCR yanilabilir. Cok sutunlu/egik/elle yazili belgeler, iptal/iskonto/kampanya satirlari ve farkli KDV oranlari elle kontrol edilmelidir. Irsaliye islemindeki el yazisi notlar vergisel veya odeme belgesi sayilmaz. Resmi e-Fatura onayi ve KDV indirim hakki icin meslek mensubu ve ilgili GIB sistemleri gerekir. Bu surumde taranan belge fotografinin kendisi arşivlenmez; onaylanan bilgi ve OCR metni saklanir. Normal gelire/gidere veya resmi beyannamelere otomatik gonderim yoktur. Fis gideri ve e-fatura taslagi kullanici acik onayiyla olusturulur.
+
+
+## v0.9.1 - Install conflict repair / parallel migration
+
+Previous v0.6-v0.9 test APKs were signed with a different ephemeral GitHub Actions debug keystore for every run. Android correctly rejects an in-place update whose signing certificate is different. The old installed app cannot be updated in-place without that lost key.
+
+This release uses a permanent new application ID for release-only builds:
+`com.tugunal.akillimuhasebe.stable`. It can be installed side-by-side with the old test app without deleting existing data. The new name is "Akıllı Muhasebe Yeni". Before uninstalling anything, use the old app's encrypted backup feature and restore it into the new one. Check records before removing the old app.
+
+The source contains no private release keys. GitHub Actions produces an unsigned stable release APK for separate signing only when ANDROID_KEYSTORE_* repository secrets are absent. Sign the unsigned release using the separately backed-up permanent keystore with the official Android apksigner. NEVER distribute the unsigned build as an installable APK.
+
+Future versions must retain both the `.stable` application ID and the same release signing key. To automate publishing GitHub Releases and in-app update checks, securely configure the repository's four ANDROID_KEYSTORE_* Actions secrets. The key and passwords must not be committed to source control.
