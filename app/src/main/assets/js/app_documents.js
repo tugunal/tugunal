@@ -177,6 +177,7 @@ function saveScannedDocument(){
   }
   delete doc.text;
   if(doc.rawText)doc.rawText=String(doc.rawText).slice(0,180000);
+  auditEvent(editingDocumentId?'belge_duzenlendi':'belge_kaydedildi',doc.documentType,doc.id);
   if(!persist())return;
   clearOcr();showView('documents');
   NativeStore.showMessage('Belge bilgileri ve tüm ürün satırları kaydedildi.');
@@ -211,13 +212,16 @@ function linkDeliveryToInvoice(id){
   if(!confirm('İrsaliye '+(doc.number||'numarasız')+' ile '+(invoice.number||'numarasız')+
      ' numaralı fatura eşleştirilsin mi? Ek muhasebe fişi oluşturulmayacak.'))return;
   doc.linkedInvoiceId=invoice.id;
+  auditEvent('irsaliye_fatura_eslesti','Fiş oluşturulmadan belge eşleştirme',doc.id);
   persist();
 }
 function unlinkDeliveryFromInvoice(id){
   const doc=scoped('documents').find(x=>Number(x.id)===Number(id));
   if(!doc||doc.documentType!=='delivery_note'||!doc.linkedInvoiceId)return;
   if(!confirm('İrsaliyenin fatura eşleştirmesi kaldırılsın mı?'))return;
-  doc.linkedInvoiceId=0;persist();
+  doc.linkedInvoiceId=0;
+  auditEvent('irsaliye_bagi_kaldirildi','Fatura bağlantısı kaldırıldı',doc.id);
+  persist();
 }
 function postReceiptExpense(id){
   if(readOnlyRecovery)return NativeStore.showMessage('Veri kurtarma modunda kayıt yapılamaz.');
@@ -235,6 +239,7 @@ function postReceiptExpense(id){
   db.transactions.unshift(tx);
   addTransactionVoucher(tx);
   doc.linkedTransactionId=tx.id;
+  auditEvent('fis_gider_taslagi','Fişten gider ve fiş taslağı',doc.id);
   persist();
 }
 function renderDocuments(){
