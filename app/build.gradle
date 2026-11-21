@@ -10,8 +10,8 @@ android {
         applicationId "com.tugunal.akillimuhasebe"
         minSdk 26
         targetSdk 35
-        versionCode 17
-        versionName "1.2.2"
+        versionCode 18
+        versionName "1.2.3"
     }
 
     signingConfigs {
@@ -24,6 +24,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Unique clean-install package; does not collide with old test/release apps.
+            applicationIdSuffix ".deneme"
+        }
         release {
             // Existing stable application: always preserve this ID for upgrades.
             applicationIdSuffix ".stable"

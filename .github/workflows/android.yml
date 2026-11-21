@@ -141,7 +141,8 @@ jobs:
         run: |
           gradle --no-daemon clean assembleDebug
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/AkilliMuhasebe-v${APP_VERSION}-DEBUG.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/AkilliMuhasebe-v${APP_VERSION}-DENEME.apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "dist/AkilliMuhasebe-v${APP_VERSION}-DENEME.apk"
 
       - name: Yeni paket icin imzasiz Android release ve guvenilir imzalama araclarini hazirla
         if: steps.signing.outputs.available != 'true'
