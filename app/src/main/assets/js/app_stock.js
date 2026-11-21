@@ -1,14 +1,22 @@
 /* Akilli Muhasebe 1.0 — inventory and delivery-note operations.
    No tax postings are made by any of these functions. */
 "use strict";
-function stockLog(action,detail,sourceId){
+// Local operation trail only; it is NOT an immutable or legally approved audit log.
+function auditEvent(action,detail,sourceId){
+  if(!unlocked||readOnlyRecovery)return;
   if(!Array.isArray(db.activityLog))db.activityLog=[];
+  let actor="";
+  try{actor=String(NativeStore.currentLocalUser()||"");}catch(_){}
   db.activityLog.unshift({
     id:newRecordId(),companyId:db.activeCompanyId,action,
+    actor:actor.slice(0,30)||"legacy",
     detail:String(detail||"").slice(0,240),sourceId:sourceId||0,
     at:new Date().toISOString()
   });
   if(db.activityLog.length>1500)db.activityLog.length=1500;
+}
+function stockLog(action,detail,sourceId){
+  auditEvent(action,detail,sourceId);
 }
 function stockSafe(){
   if(!unlocked)return false;
@@ -34,8 +42,8 @@ function saveStockProduct(event){
     unit:unit.slice(0,24),openingQuantity:opening,unitPrice:price,createdAt:new Date().toISOString()};
   db.products.unshift(p);
   stockLog("stok_urun",name+" ürün kartı oluşturuldu.",p.id);
+  if(!persist())return false;
   $("stockProductForm").reset();
-  persist();
   NativeStore.showMessage("Ürün kartı kaydedildi.");
   return false;
 }
@@ -59,8 +67,8 @@ function recordStockMovement(event){
     sourceType:"manual",sourceId:0};
   db.stockMovements.unshift(move);
   stockLog("stok_hareketi",product.name+" için "+quantity+" "+product.unit+" hareket.",move.id);
+  if(!persist())return false;
   $("stockMoveForm").reset();
-  persist();
   NativeStore.showMessage("Stok hareketi kaydedildi.");
   return false;
 }
@@ -95,7 +103,7 @@ function applyDeliveryStock(){
   db.stockMovements.unshift(...moves);
   doc.stockApplied={direction:operation,at:new Date().toISOString(),movementIds:moves.map(x=>x.id)};
   stockLog("irsaliye_stok",(doc.number||"Numarasız")+" irsaliye "+moves.length+" stok satırına aktarıldı.",doc.id);
-  persist();
+  if(!persist())return;
   NativeStore.showMessage("İrsaliye stoka aktarıldı. Mali fiş oluşturulmadı.");
 }
 function renderInventory(){
@@ -141,6 +149,6 @@ function renderActivityLog(){
   const entries=scoped("activityLog").slice(0,100);
   $("activityLog").innerHTML=entries.map(x=>'<div class="row"><div><b>'+
     esc(x.action.replaceAll("_"," "))+'</b><div class="muted">'+
-    esc(x.detail)+" • "+esc((x.at||"").replace("T"," ").slice(0,16))+
+    esc(x.detail)+" • "+esc(x.actor||"Eski kayıt")+" • "+esc((x.at||"").replace("T"," ").slice(0,16))+
     '</div></div></div>').join("")||'<div class="empty">Yeni işlem geçmişi henüz boş.</div>';
 }

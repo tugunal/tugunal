@@ -88,9 +88,10 @@ function importBankRows(){
     const id=newRecordId();db.bankRows.unshift({...row,id,companyId,status:'unmatched',matchedTxId:0,suggestedTxId:0});
     existing.add(row.key);added++;
   }
+  if(added>0)auditEvent('banka_ekstresi_aktarildi',added+' satır',0);
+  if(!persist())return;
   $('bankFileStatus').textContent=added+' hareket aktarıldı; '+duplicates+' aynı dosya/satır daha önce aktarılmış.';
   pendingBank=null;$('bankPreview').classList.add('hidden');$('bankMapping').classList.add('hidden');$('bankFile').value='';
-  persist();
 }
 function bankSuggestedTransaction(bankRow,used){
   const sign=r=>r.type==='income'?1:-1;
@@ -112,7 +113,8 @@ function suggestBankMatches(){
     if(match){row.status='suggested';row.suggestedTxId=match.id;alreadyUsed.add(Number(match.id));suggested++;}
     else unresolved++;
   }
-  persist();NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
+  if(suggested>0)auditEvent('banka_eslesme_onerisi',suggested+' öneri',0);
+  if(persist())NativeStore.showMessage(suggested+' eşleşme önerildi, '+unresolved+' hareket eşleşmedi.');
 }
 function approveBankMatch(id){
   if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
@@ -126,7 +128,9 @@ function approveBankMatch(id){
   if(Number(tx.accountId)!==Number(row.accountId)||Math.abs(sign*Number(tx.amount)-Number(row.amount))>0.01)
     return NativeStore.showMessage('Banka tutarı veya hesabı değişmiş. Yeniden eşleştirme önerisi alın.');
   if(!confirm('Banka hareketi mevcut muhasebe kaydıyla eşleştirilsin mi?'))return;
-  row.status='matched';row.matchedTxId=tx.id;row.suggestedTxId=0;persist();
+  row.status='matched';row.matchedTxId=tx.id;row.suggestedTxId=0;
+  auditEvent('banka_eslestirildi','Mevcut hareketle eşleştirme',row.id);
+  persist();
 }
 function createBankTransaction(id){
   if(readOnlyRecovery)return NativeStore.showMessage('Veri koruma modunda işlem yapılamaz.');
@@ -139,6 +143,7 @@ function createBankTransaction(id){
       accountId:row.accountId,sourceType:'bank-import',sourceId:row.id};
   db.transactions.unshift(tx);addTransactionVoucher(tx);
   row.status='matched';row.matchedTxId=idTx;row.suggestedTxId=0;
+  auditEvent('banka_hareketi_olusturuldu','Ekstre satırından gelir/gider',row.id);
   persist();
 }
 function changeBankRowStatus(id,status){
@@ -149,7 +154,9 @@ function changeBankRowStatus(id,status){
     const tx=scoped('transactions').find(t=>Number(t.id)===Number(row.matchedTxId));
     if(tx&&tx.sourceType==='bank-import')return NativeStore.showMessage('Önce bu ekstre satırından oluşturulan gelir/gider hareketini sil.');
   }
-  row.status=status;row.suggestedTxId=0;if(status==='unmatched')row.matchedTxId=0;persist();
+  row.status=status;row.suggestedTxId=0;if(status==='unmatched')row.matchedTxId=0;
+  auditEvent('banka_durumu_degisti',status,row.id);
+  persist();
 }
 function renderBankStatement(){
   if(!$('bankImportedList'))return;

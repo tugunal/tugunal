@@ -4,10 +4,16 @@ on:
   push:
     branches:
       - akilli-muhasebe
+      - akilli-muhasebe-v1.2.7-stabilization
   workflow_dispatch:
 
 permissions:
   contents: write
+
+# Prevent obsolete pushes from producing overlapping, potentially stale APK artifacts.
+concurrency:
+  group: akilli-muhasebe-android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

@@ -33,8 +33,8 @@ function element(id){
 }
 const fakeWindow={addEventListener(){},scrollTo(){}};
 const native={
-  saved:[],messages:[],hasPin:()=>"true",getAppVersion:()=>"1.2.0",
-  showMessage(s){this.messages.push(String(s))},saveData(json){this.saved.push(JSON.parse(json));return"ok"},
+  saved:[],messages:[],failNextSave:false,hasPin:()=>"true",currentLocalUser:()=>"test_accountant",getAppVersion:()=>"1.2.0",
+  showMessage(s){this.messages.push(String(s))},saveData(json){if(this.failNextSave){this.failNextSave=false;return"error"}this.saved.push(JSON.parse(json));return"ok"},
   loadData(){return"{}"},verifyPin(){return"true"},setPin(){return"ok"},
   checkForUpdate(){},saveCsvExport(){return"ok"},
 };
@@ -50,9 +50,47 @@ for(const path of sources.filter(x=>x!=="js/app_init.js")){
   vm.runInContext(fs.readFileSync(root+path,"utf8"),ctx,{filename:path,timeout:20000});
 }
 const expr=code=>vm.runInContext(code,ctx,{timeout:20000});
-expr("db=normalizeDB({});unlocked=true");
+// Every HTML inline action must refer to an actually loaded JavaScript handler.
+// This catches silent broken buttons before an APK is handed to a customer.
+const builtInActions=new Set(["confirm","prompt","alert","parseInt","parseFloat",
+  "Number","String","Boolean","Date","Math","setTimeout","clearTimeout","isNaN"]);
+const unknownActions=new Set();
+const inlineActions=[...html.matchAll(/\b(?:onclick|onsubmit|onchange|oninput)\s*=\s*"([^"]+)"/g)];
+for(const attr of inlineActions){
+  const handler=attr[1];
+  for(const hit of handler.matchAll(/(?:^|[^\w.$])([A-Za-z_$][\w$]*)\s*\(/g)){
+    const name=hit[1];
+    if(builtInActions.has(name))continue;
+    if(expr("typeof "+name)!=="function")unknownActions.add(name+" in "+handler);
+  }
+}
+assert.deepEqual([...unknownActions],[],"HTML buttons reference missing JavaScript handlers");
+expr("db=normalizeDB({});unlocked=true;render=function(){}");
+assert.equal(expr("persist()"),true,"First accounting snapshot must be committed");
+const committedTxCount=expr("db.transactions.length");
+expr("db.transactions.push({id:445566,date:'2026-11-21',type:'income',amount:25,description:'Uncommitted'})");
+native.failNextSave=true;
+assert.equal(expr("persist()"),false,"Native save failure must be reported");
+assert.equal(expr("db.transactions.length"),committedTxCount,"Failed save left fictitious transaction in memory");
+assert.ok(native.messages.some(s=>s.includes("Son doğrulanmış kayıtlar geri yüklendi")),
+  "Failed accounting save must warn the user");
 const activeId=expr("db.activeCompanyId");
 assert.ok(activeId);
+// Switching firms must not discard OCR/bank previews if the encrypted write fails.
+const secondId=expr("newRecordId()");
+expr("db.companies.push({id:"+secondId+",name:'Independent Test Company'})");
+assert.equal(expr("persist()"),true);
+expr("pendingOcr={text:'Draft invoice in current firm'};pendingBank={filename:'uncommitted-bank.csv'}");
+native.failNextSave=true;
+assert.equal(expr("switchCompany("+secondId+")"),false,"Company switch claimed success after failed save");
+assert.equal(expr("db.activeCompanyId"),activeId,"Failed company switch changed the selected company");
+assert.ok(expr("pendingOcr")&&expr("pendingBank"),"Failed switch discarded unsaved previews");
+assert.equal(expr("switchCompany("+secondId+")"),true,"Valid company switch failed");
+assert.equal(expr("db.activeCompanyId"),secondId);
+assert.equal(expr("pendingOcr"),null,"Successful switch kept previous firm's OCR preview");
+assert.equal(expr("pendingBank"),null,"Successful switch kept previous firm's bank preview");
+assert.equal(expr("switchCompany("+activeId+")"),true,"Return to original firm failed");
+assert.equal(expr("switchCompany(-12345)"),false,"Unknown firm must never be selected");
 assert.equal(expr("Array.isArray(scoped('products'))"),true);
 assert.equal(expr("Array.isArray(scoped('stockMovements'))"),true);
 assert.equal(expr("Array.isArray(scoped('activityLog'))"),true);
@@ -91,15 +129,20 @@ assert.equal(expr("scoped('documents')[0].stockApplied.direction"),"in");
 assert.equal(expr("scoped('products').reduce((s,p)=>s+stockOnHand(p),0)"),75);
 assert.equal(expr("AccountingRules.deliveryPlan(scoped('documents')[0],db.products,db.stockMovements,db.activeCompanyId,'in').ok"),false);
 assert.equal(expr("scoped('activityLog').length"),1);
+assert.equal(expr("scoped('activityLog')[0].actor"),"test_accountant","Audit event must record the current user");
+assert.equal(expr("scoped('activityLog')[0].companyId"),activeId,"Audit event must belong to the current firm");
 
 const firstProductId=expr("scoped('products')[0].id");
 assert.equal(expr("AccountingRules.movementAllowed(stockProductById("+firstProductId+"),db.stockMovements,db.activeCompanyId,-1000).ok"),false);
 expr("db.companies.push({id:777777,name:'İkinci Firma'});db.activeCompanyId=777777");
 assert.equal(expr("scoped('products').length"),0,"no cross-company inventory leak");
 assert.equal(expr("scoped('documents').length"),0,"no cross-company document leak");
+assert.equal(expr("scoped('activityLog').length"),0,"no cross-company activity log leak");
 expr("db.activeCompanyId="+activeId);
 
 assert.ok(html.includes('id="registrationPanel"'),"first-run registration panel missing");
+assert.ok(html.includes('id="localAccessDisclosure"'),"shared local account data warning must be shown at registration");
+assert.ok(html.includes('id="localAccessStatus"'),"settings must disclose missing role-based permissions");
 assert.ok(html.includes('id="regFirstName"'),"registration first name field missing");
 assert.ok(html.includes('id="regLastName"'),"registration last name field missing");
 assert.ok(html.includes('id="regEmail"'),"registration email field missing");
@@ -175,6 +218,29 @@ assert.ok(nativeSource.includes("public String authenticateLocalAccount("),"nati
 assert.ok(nativeSource.includes("public String updateLocalAccountContact("),"profile contact changes must update login identities");
 assert.ok(nativeSource.includes("public String changeLocalAccountPassword("),"per-user password change missing");
 assert.ok(nativeSource.includes("derivePinHash(password, salt)"),"passwords must have salted PBKDF2 hashes");
+assert.ok(nativeSource.includes("public String rollbackLocalRegistration("),"uncommitted account credentials must be reversible");
+assert.ok(nativeSource.includes('pendingLocalRegistrationUsername = "";'),"pending account marker must be cleared after successful save");
+assert.ok(nativeSource.includes('.putString("encrypted_db", encrypted).commit()'),"encrypted data save must be synchronous and verified");
+assert.ok(nativeSource.includes('if (json == null || json.trim().isEmpty()) return "error_format";'),
+  "empty accounting payloads must not overwrite encrypted records");
+assert.ok(nativeSource.includes('parsed.optJSONArray("companies") == null') &&
+  nativeSource.includes('parsed.optJSONArray("transactions") == null'),
+  "malformed accounting schema must not be stored or restored");
+assert.ok(nativeSource.includes('pin.length() > 64'),"initial local PIN must accept 64-character account password");
+assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes('const newPassword=prompt('),
+  "legacy PIN migration must prompt for a new, stronger account password");
+assert.ok(fs.readFileSync(root+"js/auth_flow.js","utf8").includes("showEncryptedRecordRecovery("),
+  "corrupt encrypted records must open protected recovery");
+assert.ok(fs.readFileSync(root+"js/app_main.js","utf8").includes("render();return true;"),
+  "persistence must report actual success to profile editor");
+assert.ok(fs.readFileSync(root+"js/app_records.js","utf8").includes("if(!persist())return;"),
+  "record forms must not close before successful encrypted write");
+assert.ok(fs.readFileSync(root+"js/app_documents.js","utf8").includes("if(!persist())return;"),
+  "OCR documents must stay editable if encrypted save fails");
+assert.ok(fs.readFileSync(root+"js/app_stock.js","utf8").includes("if(!persist())return false;"),
+  "stock changes must not claim success after failed save");
+assert.ok(fs.readFileSync(root+"js/app_bank.js","utf8").includes("if(!persist())return;"),
+  "bank previews must survive failed save");
 assert.ok(nativeSource.includes("encryptLocalData(accounts.toString())"),"auth registry must be Keystore encrypted");
 assert.ok(nativeSource.includes("activeLocalUsername"),"native account binding missing");
 assert.ok(!nativeSource.includes('put("password"'),"plain-text password storage forbidden");
@@ -192,5 +258,20 @@ assert.equal(expr("duplicateAppAccount([{id:1,username:'kisi',email:'kisi@hotmai
 assert.equal(expr("typeof submitPin"),"function");
 assert.equal(expr("typeof submitRegistration"),"function");
 assert.equal(expr("typeof loginLegacyAccount"),"function");
+assert.equal(expr("typeof auditEvent"),"function");
+assert.equal(expr("typeof stockLog"),"function");
+
+// Confidential accounting data must be cleared when a session is locked.
+expr("db.transactions.push({id:889922,companyId:db.activeCompanyId,date:'2026-11-21',amount:250,type:'income'})");
+expr("pendingOcr={text:'Private customer invoice'}");
+expr("pendingBank={filename:'Private bank statement.csv'}");
+expr("rememberDurableDB()");
+expr("lockApp()");
+assert.equal(expr("unlocked"),false,"Locked app retained an unlocked JS session");
+assert.equal(expr("db.transactions.length"),0,"Locked app retained decrypted transactions");
+assert.equal(expr("lastDurableDbSnapshot"),null,"Locked app retained a plaintext accounting snapshot");
+assert.equal(expr("pendingOcr"),null,"Locked app retained OCR data");
+assert.equal(expr("pendingBank"),null,"Locked app retained imported bank details");
+console.log("PASS: account session lock wipes decrypted financial data and temporary bank/OCR caches");
 
 console.log("PASS: accounting, bank, XML, username/Hotmail/phone login, password hashing checks, migration and single APK policy");

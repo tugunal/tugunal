@@ -71,6 +71,8 @@ public class MainActivity extends Activity {
     private static final String PREFS = "akilli_muhasebe_secure";
     private static final String LOCAL_ACCOUNTS_KEY = "encrypted_auth_accounts_v1";
     private volatile String activeLocalUsername = "";
+    // New account credentials stay reversible until the encrypted profile is saved.
+    private volatile String pendingLocalRegistrationUsername = "";
     private volatile int failedAccountAttempts = 0;
     private volatile long accountLockUntil = 0L;
 
@@ -992,6 +994,34 @@ public class MainActivity extends Activity {
                 accounts.put(account);
                 if (!storeLocalAccounts(accounts)) return "error";
                 activeLocalUsername = u;
+                pendingLocalRegistrationUsername = u;
+                return "ok";
+            } catch (Exception ex) {
+                return "error";
+            }
+        }
+
+        /**
+         * Remove ONLY the just-created credential when the matching encrypted profile
+         * could not be saved. A successful saveData call clears the pending marker.
+         */
+        @JavascriptInterface
+        public String rollbackLocalRegistration(String username) {
+            String u = normalizeAccountName(username);
+            if (!nativeUnlocked || !u.equals(activeLocalUsername)
+                    || !u.equals(pendingLocalRegistrationUsername)) return "locked";
+            try {
+                JSONArray accounts = readLocalAccounts();
+                int index = findLocalAccountIndex(accounts, u);
+                if (index < 0) return "not_found";
+                JSONArray remaining = new JSONArray();
+                for (int i = 0; i < accounts.length(); i++) {
+                    if (i != index) remaining.put(accounts.get(i));
+                }
+                if (!storeLocalAccounts(remaining)) return "error";
+                pendingLocalRegistrationUsername = "";
+                activeLocalUsername = "";
+                nativeUnlocked = false;
                 return "ok";
             } catch (Exception ex) {
                 return "error";
@@ -1099,7 +1129,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String setPin(String pin) {
             try {
-                if (pin == null || pin.length() < 6 || pin.length() > 32) return "invalid";
+                if (pin == null || pin.length() < 6 || pin.length() > 64) return "invalid";
                 if (getSharedPreferences(PREFS, MODE_PRIVATE).contains("pin_hash")) return "already_set";
                 byte[] salt = new byte[16];
                 new SecureRandom().nextBytes(salt);
@@ -1156,10 +1186,17 @@ public class MainActivity extends Activity {
             if (!nativeUnlocked) return "error_locked";
             if (dataReadFailed) return "error_locked";
             try {
-                String encrypted = encryptLocalData(json == null ? "{}" : json);
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                        .putString("encrypted_db", encrypted).apply();
-                return "ok";
+                // Refuse malformed or empty payloads before touching existing encrypted data.
+                if (json == null || json.trim().isEmpty()) return "error_format";
+                JSONObject parsed = new JSONObject(json);
+                if (parsed.optJSONArray("companies") == null ||
+                        parsed.optJSONArray("transactions") == null)
+                    return "error_format";
+                String encrypted = encryptLocalData(json);
+                boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                        .putString("encrypted_db", encrypted).commit();
+                if (saved) pendingLocalRegistrationUsername = "";
+                return saved ? "ok" : "error";
             } catch (Exception ex) {
                 return "error";
             }
@@ -1171,7 +1208,8 @@ public class MainActivity extends Activity {
             // Called only after user consciously selects and decrypts a backup.
             try {
                 JSONObject parsed = new JSONObject(json);
-                if (!parsed.has("companies") || !parsed.has("transactions"))
+                if (parsed.optJSONArray("companies") == null ||
+                        parsed.optJSONArray("transactions") == null)
                     return "error_format";
                 String encrypted = encryptLocalData(json);
                 boolean saved = getSharedPreferences(PREFS, MODE_PRIVATE).edit()

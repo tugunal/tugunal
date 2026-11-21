@@ -58,6 +58,7 @@
       <input id="regExistingPin" type="password" inputmode="text" autocomplete="off" placeholder="Eski cihaz PIN'i / ana şifre"></div>
     </div>
    </div>
+   <div class="notice" id="localAccessDisclosure"><b>Ortak veri erişimi uyarısı:</b> Bu sürümde aynı cihaza eklenen kullanıcılar tüm kayıtlı firma ve mükellef verilerini görebilir ve değiştirebilir. Seçilen kullanıcı türü henüz erişim yetkisi sağlamaz. Yalnızca güvendiğiniz kişilere hesap açın.</div>
    <label class="register-consent"><input id="regLocalConsent" type="checkbox" required><span>Bilgilerimin bu cihazda şifreli olarak saklanacağını ve bu kayıt ekranının çevrimdışı kullanıcı profili oluşturduğunu anladım. Bu işlem çevrimiçi hesap veya e-posta doğrulaması oluşturmaz.</span></label>
    <button class="btn register-submit" id="registerSubmit" type="submit">Kullanıcı kaydını oluştur</button>
    <p id="registerError" class="dangertext muted" role="alert"></p>
@@ -343,6 +344,7 @@
  <p class="muted" id="profileStatus"></p>
 </div><div class="field"><label>İşletme / Muhasebe bürosu adı</label><input id="businessName" placeholder="İşletme adı"></div>
 <button class="btn" onclick="saveSettings()">Kaydet</button><hr>
+<div class="notice" id="localAccessStatus"><b>Yetkilendirme:</b> Yerel kullanıcı hesapları arasında firma bazlı veri yetkisi henüz uygulanmamaktadır. Bu cihazı kullanan her hesap aynı muhasebe kayıtlarını açabilir; hassas mükellef verileri için cihaz erişimini sınırlandırın.</div>
 <div class="panel" style="margin-bottom:12px"><b>PIN güvenliği</b>
 <p class="muted">Hesap şifrenizi değiştirmek muhasebe kayıtlarını silmez. Mevcut şifreniz gerekir.</p>
 <button class="btn secondary" onclick="changeSecurityPin()">Hesap şifresini değiştir</button></div>

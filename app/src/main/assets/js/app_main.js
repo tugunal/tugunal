@@ -96,7 +96,29 @@ let raw='';try{raw=NativeStore.loadData()}catch(e){raw='__DECRYPT_FAILED__'}
 if(raw==='__DECRYPT_FAILED__'){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Şifreli kayıtlar okunamadı. Veriler silinmedi. Yedekten geri yükleyin.');return}
 try{db=normalizeDB(JSON.parse(raw||'{}'))}catch(e){readOnlyRecovery=true;db=normalizeDB({});unlocked=true;$('lock').classList.add('hidden');$('pinInput').value='';render();showView('settings');$('recoveryWarning').classList.remove('hidden');NativeStore.showMessage('Kayıt biçimi bozuk. Orijinal veri korunuyor. Yedekten geri yükleyin.');return}
 readOnlyRecovery=false;unlocked=true;migrateLegacyData();$('lock').classList.add('hidden');$('pinInput').value='';$('pinError').textContent='';persist();$('appVersionText').textContent=NativeStore.getAppVersion();setTimeout(()=>checkForUpdates(false),900)}
-function persist(){if(!unlocked)return;if(readOnlyRecovery){NativeStore.showMessage('Kayıtlar koruma modunda. Önce yedekten geri yükleyin.');render();return;}const result=NativeStore.saveData(JSON.stringify(db));if(result!=='ok'){if(result==='error_locked')readOnlyRecovery=true;NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Veriler korunuyor.');}render()}
+// Last confirmed encrypted payload, retained only for this foreground session.
+// Failed native storage writes must not leave fictitious accounting entries visible.
+let lastDurableDbSnapshot=null;
+function rememberDurableDB(){lastDurableDbSnapshot=JSON.stringify(db);}
+function persist(){
+ if(!unlocked)return false;
+ if(readOnlyRecovery){
+   NativeStore.showMessage('Kayıtlar koruma modunda. Önce yedekten geri yükleyin.');
+   render();return false;
+ }
+ const payload=JSON.stringify(db);
+ const result=NativeStore.saveData(payload);
+ if(result!=='ok'){
+   if(lastDurableDbSnapshot){
+     try{db=normalizeDB(JSON.parse(lastDurableDbSnapshot));}catch(_){}
+   }
+   if(result==='error_locked')readOnlyRecovery=true;
+   NativeStore.showMessage('Kayıt güvenli biçimde saklanamadı. Son doğrulanmış kayıtlar geri yüklendi.');
+   render();return false;
+ }
+ lastDurableDbSnapshot=payload;
+ render();return true;
+}
 let availableUpdate=null,updateCheckBusy=false;
 function setUpdateStatus(message){if($('updateStatus'))$('updateStatus').textContent=message;if($('settingsUpdateStatus'))$('settingsUpdateStatus').textContent=message;}
 function setUpdateButtons(visible){$('installUpdateButton')?.classList.toggle('hidden',!visible);$('settingsInstallUpdateButton')?.classList.toggle('hidden',!visible);}
@@ -105,7 +127,23 @@ window.onUpdateCheckResult=function(result){updateCheckBusy=false;if(!result||!r
 function installAvailableUpdate(){if(!availableUpdate||!availableUpdate.downloadUrl){NativeStore.showMessage('Önce güncelleme kontrolü yapın.');return;}if(!confirm('Akıllı Muhasebe v'+availableUpdate.latestVersion+' indirilsin mi? İndirme tamamlanınca Android kurulum ekranı açılacak.'))return;setUpdateButtons(false);setUpdateStatus('Yeni APK indiriliyor...');NativeStore.downloadAndInstallUpdate(availableUpdate.downloadUrl,availableUpdate.digest||'');}
 window.onUpdateDownloadProgress=function(p){if(!p)return;const pct=Number(p.percent)||0;setUpdateStatus('APK indiriliyor: %'+pct);};
 window.onUpdateDownloadResult=function(result){if(!result||!result.success){setUpdateStatus((result&&result.message)||'APK indirilemedi.');setUpdateButtons(!!availableUpdate);return;}setUpdateStatus(result.message||'APK indirildi. Android kurulum ekranı açılıyor.');};
-function lockApp(){unlocked=false;try{NativeStore.lockNative();}catch(_){}$('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent=''}
+function lockApp(){
+ unlocked=false;
+ try{NativeStore.lockNative();}catch(_){}
+ // Clear decrypted financial data and temporary OCR/bank previews from memory.
+ // Android Keystore encrypted records remain safely on disk for the next login.
+ db=JSON.parse(JSON.stringify(emptyDB));
+ lastDurableDbSnapshot=null;
+ readOnlyRecovery=false;
+ if(typeof pendingOcr!=="undefined")pendingOcr=null;
+ if(typeof pendingOcrSourceDocumentId!=="undefined")pendingOcrSourceDocumentId=0;
+ if(typeof editingDocumentId!=="undefined")editingDocumentId=0;
+ if(typeof pendingBank!=="undefined")pendingBank=null;
+ if($('ocrPreview'))$('ocrPreview').classList.add('hidden');
+ if($('bankPreview'))$('bankPreview').classList.add('hidden');
+ if($('bankMapping'))$('bankMapping').classList.add('hidden');
+ $('lock').classList.remove('hidden');$('pinInput').value='';$('pinError').textContent='';
+}
 function changeSecurityPin(){
  if(!unlocked||readOnlyRecovery)return NativeStore.showMessage('Önce PIN ile giriş yapın.');
  const oldPin=prompt('Mevcut PIN kodunu girin:');if(!oldPin)return;
